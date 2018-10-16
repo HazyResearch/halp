@@ -50,7 +50,7 @@ class BitCenterLinearBase(nn.Linear):
         # weight_delta is the delta tensor in the algorithm while weight_lp is the cached 
         # lp version of weight
         # TODO make weight_lp bias_lp all in no-gradient mode
-        # TODO check if weight delta is with gradient
+        # TODO check if weight delta is with gradient 
         self.weight_delta = Parameter(self.cast_func(self.weight.data), requires_grad=True)
         self.weight_lp = Parameter(self.cast_func(self.weight.data), requires_grad=False)
         self.do_offset = False
@@ -94,7 +94,7 @@ class BitCenterLinear(BitCenterLinearBase):
         # here we assume the first dimension of input blob indicates the size of minibatch
         cache_shape = list(input.size())
         cache_shape[0] = self.n_train_sample
-        cache = Variable(torch.zeros(cache_shape)).cpu()
+        cache = self.cast_func(Variable(torch.zeros(cache_shape))).cpu()
         return cache
     # TODO: Test whether forward_fp properly generate forward output and backward output
     # Consider how to adapt to LP SGD and LP SVRG mode
@@ -107,8 +107,7 @@ class BitCenterLinear(BitCenterLinearBase):
             if self.input_cache is None:
                 self.input_cache = self.setup_cache(input)
                 self.cache_iter = 0
-            self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)] = \
-                self.cast_func(input.data).cpu()
+            self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)].data = self.cast_func(input.cpu())
             self.cache_iter += input.size(0)
             return F.linear(input, self.weight, self.bias)
         else:
