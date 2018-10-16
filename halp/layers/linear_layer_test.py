@@ -5,48 +5,6 @@ import numpy as np
 from halp.layers.linear_layer import BitCenterLinear, bit_center_linear
 from torch.autograd import gradcheck
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
-# from halp.models.logistic_regression import LogisticRegression
-
-
-# def GetToyBitCenterLogistic():
-#     n_sample = 4
-#     n_dim = 3
-#     n_class = 4
-#     X = Variable(torch.DoubleTensor(np.random.normal(size=(n_sample, n_dim) ) ) )
-#     Y = Variable(torch.LongTensor(np.array([0, 1, 3, 2] ) ) )
-#     regressor = LogisticRegression(input_dim=n_dim, n_class=n_class, reg_lambda=100.0, dtype="half")
-#     # loss1 = regressor.forward(X, Y)
-#     # loss_diff = 0.0
-#     # move = 1e-9
-#     # loss1.backward()
-#     # for w in regressor.parameters():
-#     # loss_diff += torch.sum(w.grad.data * move)
-#     # for w in regressor.parameters():
-#     # w.data += move
-#     # loss2 = regressor.forward(X, Y)
-#     # # assert np.abs((loss2[0] - loss1[0] ).data.cpu().numpy() - loss_diff) < 1e-9
-#     # # print("loss finite diff ", loss2[0] - loss1[0], " projected loss change ", loss_diff)
-#     # print("logistic regression gradient test done!")
-#     return X, Y, regressor
-
-
-# def RunToyBitCenterLogistic():
-#     X, Y, regressor = GetToyBitCenterLogistic()
-#     X = X.half()
-#     Y = Y.half()
-#     regressor.cuda() 
-#     loss1 = regressor.forward(X, Y)
-#     loss_diff = 0.0
-#     move = 1e-9
-#     loss1.backward()
-#     for w in regressor.parameters():
-#         loss_diff += torch.sum(w.grad.data * move)
-#     for w in regressor.parameters():
-#         w.data += move
-#     loss2 = regressor.forward(X, Y)
-#     # assert np.abs((loss2[0] - loss1[0] ).data.cpu().numpy() - loss_diff) < 1e-9
-#     # print("loss finite diff ", loss2[0] - loss1[0], " projected loss change ", loss_diff)
-#     print("logistic regression gradient test done!")
 
 def TestBitCenterLinearFuncGradientCheck():
     # test if backward is synced with forward in double mode
@@ -77,6 +35,18 @@ def CheckLayerTensorProperty(t_list):
         CheckSingleTensor(t, dtype, is_cuda, requires_grad)
 
 
+def CheckLayerTensorGradProperty(t_list):
+    # each element of t_list is a tuple containing (t, dtype, is_cuda)
+    # We check if the gradient is of the right type and in the right device
+    def CheckSingleTensorGrad(t, dtype, is_cuda, requires_grad):
+        assert t.grad.dtype == dtype
+        assert t.grad.is_cuda == is_cuda
+    for i, (t, dtype, is_cuda, requires_grad) in enumerate(t_list):
+        if (t is None) or (t.grad is None):
+            continue
+        CheckSingleTensorGrad(t, dtype, is_cuda, requires_grad)
+
+
 def CheckBitCenterLinearBaseTensorProperty(layer):
     t_list = [(layer.weight, torch.float32, True, True), 
               (layer.bias, torch.float32, True, True),
@@ -86,9 +56,10 @@ def CheckBitCenterLinearBaseTensorProperty(layer):
               (layer.bias_lp, torch.half, True, False),
               (layer.input_cache, torch.half, False, False)]
     CheckLayerTensorProperty(t_list)
+    CheckLayerTensorGradProperty(t_list)
 
 
-def TestBitCenterLinearLayerFwCheck(cast_func=void_cast_func):
+def TestBitCenterLinearLayerFwBwCheck(cast_func=void_cast_func):
     # check if the behavior of BitCentering linear layer is going as expected for forward
     # the backward behavior is guaranteed by 
     # bit center linear function test TestBitCenterLinearFuncGradientCheck
@@ -147,6 +118,6 @@ def TestForwardAndBackwardLinear():
 
 if __name__ == "__main__":
     print(torch.__version__)
-    TestBitCenterLinearLayerFwCheck(cast_func=void_cast_func)
-    TestBitCenterLinearLayerFwCheck(cast_func=single_to_half_det)
+    TestBitCenterLinearLayerFwBwCheck(cast_func=void_cast_func)
+    TestBitCenterLinearLayerFwBwCheck(cast_func=single_to_half_det)
     TestBitCenterLinearFuncGradientCheck()
