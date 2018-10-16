@@ -67,16 +67,14 @@ class BitCenterLinearBase(nn.Linear):
         # input cache
         self.input_cache = None
         self.grad_input_cache = None
-        # self.cache_iter = None
-        # self.n_train_sample = n_train_sample
 
     def reset_parameters_bit_center(self):
         init.zeros_(self.weight_delta)
         if self.bias is not None:
             init.zeros_(self.bias_delta)
 
-    def set_mode(do_offset):
-        self.do_offset = offset
+    def set_mode(self, do_offset):
+        self.do_offset = do_offset
 
 
 
@@ -84,13 +82,17 @@ class BitCenterLinear(BitCenterLinearBase):
     def __init__(self, in_features, out_features, bias=True, 
         cast_func=single_to_half_det, n_train_sample=1):
         super(BitCenterLinear, self).__init__(in_features, out_features, bias, cast_func)
-        self.cache_iter = None
+        self.cache_iter = 0
         self.n_train_sample = n_train_sample
+
+    def set_mode(self, do_offset, cache_iter=0):
+        self.do_offset = do_offset
+        self.cache_iter = cache_iter
 
     def setup_cache(self, input):
         # the cache is set up when the first minibatch forward is done.
         # here we assume the first dimension of input blob indicates the size of minibatch
-        cache_shape = list(input.get_shape())
+        cache_shape = list(input.size())
         cache_shape[0] = self.n_train_sample
         cache = Variable(torch.zeros(cache_shape)).cpu()
         return cache
@@ -100,19 +102,25 @@ class BitCenterLinear(BitCenterLinearBase):
     #     return F.linear(input, self.weight, self.bias)
 
     def forward(self, input):
+        # Need to test do_offset mode whether gradient is updated properly
         if self.do_offset:
             if self.input_cache is None:
                 self.input_cache = self.setup_cache(input)
-            self.input_cache[self.cache_iter:min(self.cache_iter + input.get_shape()[0], self.n_train_sample)] = \
-                self.cast_func(input.data)
+                self.cache_iter = 0
+            self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)] = \
+                self.cast_func(input.data).cpu()
+            self.cache_iter += input.size(0)
             return F.linear(input, self.weight, self.bias)
         else:
-            output = bit_center_linear(input_lp=self.input_cache[self.cache_iter:(self.cache_iter + input.size(0))], 
-                input_delta=input, 
-                weight_lp=self.weight_lp, 
-                weight_delta=self.weight_delta, 
-                bias_lp=self.bias_lp, 
-                bias_delta=self.bias_delta)
+            input_lp = self.input_cache[self.cache_iter:(self.cache_iter + input.size(0))].cuda()
+            input_delta = input
+            weight_lp = self.weight_lp
+            weight_delta = self.weight_delta
+            bias_lp = self.bias_lp
+            bias_delta = self.bias_delta
+            output = bit_center_linear(input_lp, input_delta, weight_lp, 
+                weight_delta, bias_lp, bias_delta)
+            self.cache_iter += input.size(0)
             return output
 
 
