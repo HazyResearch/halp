@@ -60,8 +60,6 @@ class BitCenterLinearBase(nn.Linear):
         else:
             self.register_parameter('bias_delta', None)
             self.register_parameter('bias_lp', None)
-        # pre allocate memory for the weight and bias converted to lp
-        # to enable weight bias initialization, we need 
         self.cuda()
         self.reset_parameters_bit_center()
         # input cache
@@ -75,7 +73,6 @@ class BitCenterLinearBase(nn.Linear):
 
     def set_mode(self, do_offset):
         self.do_offset = do_offset
-
 
 
 class BitCenterLinear(BitCenterLinearBase):

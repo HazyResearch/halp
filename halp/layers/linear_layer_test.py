@@ -88,8 +88,10 @@ def CheckBitCenterLinearBaseTensorProperty(layer):
     CheckLayerTensorProperty(t_list)
 
 
-def TestBitCenterLinearLayerFwBwCheck(cast_func=void_cast_func):
-    # check if the behavior of BitCentering linear layer is going as expected
+def TestBitCenterLinearLayerFwCheck(cast_func=void_cast_func):
+    # check if the behavior of BitCentering linear layer is going as expected for forward
+    # the backward behavior is guaranteed by 
+    # bit center linear function test TestBitCenterLinearFuncGradientCheck
     n_sample = 77
     n_dim = 13
     n_out_dim = 31
@@ -107,14 +109,16 @@ def TestBitCenterLinearLayerFwBwCheck(cast_func=void_cast_func):
         start_idx = i * minibatch_size
         end_idx = min((i + 1) * minibatch_size, n_sample)
         input_tensor = torch.randn(end_idx - start_idx, n_dim, dtype=torch.float32, requires_grad=True).cuda()        
-        _ = layer.forward(input_tensor)
+        output = layer.forward(input_tensor)
         input_tensor_list.append(input_tensor)
+        torch.sum(output).backward()
     layer.set_mode(do_offset=False)
     if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
         CheckBitCenterLinearBaseTensorProperty(layer)
     for i in range(n_minibatch):
         input_lp = layer.input_cache[layer.cache_iter:(layer.cache_iter + input_tensor_list[i].size(0))].cuda()
         output = layer.forward(cast_func(input_tensor_list[i]))
+        torch.sum(output).backward()
         output_ref = torch.mm(cast_func(input_tensor_list[i]), layer.weight_lp.t())\
             + torch.mm((input_lp + cast_func(input_tensor_list[i])), layer.weight_delta.t())    
         # print("inter type ", layer.weight_lp.t().data.cpu().numpy().dtype)    
@@ -143,6 +147,6 @@ def TestForwardAndBackwardLinear():
 
 if __name__ == "__main__":
     print(torch.__version__)
-    TestBitCenterLinearLayerFwBwCheck(cast_func=void_cast_func)
-    TestBitCenterLinearLayerFwBwCheck(cast_func=single_to_half_det)
+    TestBitCenterLinearLayerFwCheck(cast_func=void_cast_func)
+    TestBitCenterLinearLayerFwCheck(cast_func=single_to_half_det)
     TestBitCenterLinearFuncGradientCheck()
