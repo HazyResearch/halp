@@ -86,7 +86,7 @@ class BitCenterLinear(nn.Linear):
         if self.input_cache is None:
             self.input_cache = self.setup_cache(input)
             self.cache_iter = 0
-        self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)].data = self.cast_func(input.cpu())
+        self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)].data.copy_(self.cast_func(input.cpu()))
         self.cache_iter += input.size(0)
         return F.linear(input, self.weight, self.bias)
 
