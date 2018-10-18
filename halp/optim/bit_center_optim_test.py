@@ -61,9 +61,6 @@ class TestBitCenterSGD(TestBitCenterOptim, TestCase):
         if cache is None:
             assert not param.requires_grad
         else:
-
-            print(name, param.shape, cache.shape, cache.is_cuda)
-
             assert list(param.shape) == list(cache.shape[1:])
             assert cache.size(0) == optimizer.n_minibatch_per_epoch
             assert not name.endswith("_lp")
