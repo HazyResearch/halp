@@ -64,6 +64,8 @@ class BitCenterLinear(nn.Linear):
         self.grad_input_cache = None
         self.cache_iter = 0
         self.n_train_sample = n_train_sample
+        # starting from fp mode
+        self.set_mode(do_offset=True)
 
     def reset_parameters_bit_center(self):
         init.zeros_(self.weight_delta)
@@ -87,7 +89,7 @@ class BitCenterLinear(nn.Linear):
             self.input_cache = self.setup_cache(input)
             self.cache_iter = 0
         self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)].data.copy_(self.cast_func(input.cpu()))
-        self.cache_iter += input.size(0)
+        self.cache_iter = (self.cache_iter + input.size(0)) % self.n_train_sample
         return F.linear(input, self.weight, self.bias)
 
     def forward_lp(self, input):
@@ -100,7 +102,7 @@ class BitCenterLinear(nn.Linear):
         bias_delta = self.bias_delta
         output = bit_center_linear(input_lp, input_delta, weight_lp, 
             weight_delta, bias_lp, bias_delta)
-        self.cache_iter += input.size(0)
+        self.cache_iter = (self.cache_iter + input.size(0)) % self.n_train_sample
         return output
 
     def forward(self, input):

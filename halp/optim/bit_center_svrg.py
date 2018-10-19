@@ -16,10 +16,10 @@ class BitCenterSVRG(BitCenterOptim):
     Implementation of bit centering SVRG
     """
     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=1, cast_func=void_cast_func, n_minibatch_per_epoch=128):
+        n_train_sample=1, cast_func=void_cast_func, minibatch_size=128):
         super(BitCenterSVRG, self).__init__(params, params_name, lr, 
             weight_decay, n_train_sample, cast_func,
-            n_minibatch_per_epoch=n_minibatch_per_epoch)
+            minibatch_size=minibatch_size)
 
     def setup_single_grad_cache(self, grad_shape):
         cache_shape = grad_shape

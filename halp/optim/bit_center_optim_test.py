@@ -18,31 +18,63 @@ class TestBitCenterOptim(HalpTest):
     def FuncTestCacheProperty(model, optimizer):
         pass
 
-    def test_CacheProperty(self):
-        n_train_sample = np.random.randint(low=100, high=1000)
-        n_minibatch_per_epoch = np.random.randint(low=10, high=n_train_sample//10)
-        model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
-        optimizer = self.GetOptimizer(model, lr=0.5, weight_decay=0, 
-            n_train_sample=n_train_sample, n_minibatch_per_epoch=n_minibatch_per_epoch)
-        for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
-            for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
-                self.FuncTestCacheProperty(p, p_name, cache, optimizer)
-        print(self.__class__, " cache property test passed!")
+    # def test_CacheProperty(self):
+    #     n_train_sample = np.random.randint(low=100, high=1000)
+    #     minibatch_size = np.random.randint(low=10, high=n_train_sample//10)
+    #     model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
+    #     optimizer = self.GetOptimizer(model, lr=0.5, weight_decay=0, 
+    #         n_train_sample=n_train_sample, minibatch_size=minibatch_size)
+    #     for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
+    #         for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+    #             self.FuncTestCacheProperty(p, p_name, cache, optimizer)
+    #     print(self.__class__, " cache property test passed!")
 
     @staticmethod
     def FuncTestCacheUpdate():
         pass
 
-    @staticmethod
-    def TestCacheUpdate():
-        pass
+    def test_StepFP(self):
+        # test grad cache is udpated properly
+        # test the involved grad got generated
+        n_train_sample = np.random.randint(low=100, high=1000)
+        minibatch_size = np.random.randint(low=10, high=n_train_sample//10)
+        model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
+        optimizer = self.GetOptimizer(model, lr=0.5, weight_decay=0, 
+            n_train_sample=n_train_sample, minibatch_size=minibatch_size)
+        n_minibatch = int(np.ceil(n_train_sample // minibatch_size))      
+        # test in 3 consecutive epochs
+        # step_fp is updating the cache properly
+        for k in range(3):
+            for i in range(n_minibatch):
+                fw_input = torch.Tensor(np.random.randn(minibatch_size, model.n_feat_in[0])).cuda()
+                fw_label = torch.Tensor(np.random.randn(minibatch_size, 1)).cuda()
+                loss = model.forward(fw_input, fw_label)
+                loss.backward()
+                # get the grad cache before fp step
+                if k == 0 and i == 0:
+                    optimizer.step_fp()
+                else:
+                    cache_list_before_update = \
+                        self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                    optimizer.step_fp()
+                    # get the grad cache after fp step
+                    cache_list_after_update = \
+                        self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                    for cache_before, cache_after in \
+                        zip(cache_list_before_update, cache_list_after_update):
+                        if (cache_before is None) and (cache_after is None):
+                            continue
+                        assert (cache_before.cpu().numpy() != cache_after.cpu().numpy()).all()
+            # # clear cache to 0 for next round test
+            # for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
+            #     for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+            #         if not cache.is_cuda:
+            #             cache.copy_(optimizer.cast_func(torch.zeros(cache.size())).cpu())
+            #         else:
+            #             cache.zero_()
 
     @staticmethod
-    def TestStepFP():
-        pass
-
-    @staticmethod
-    def TestStepLP():
+    def test_StepLP():
         pass
 
 
@@ -50,12 +82,12 @@ class TestBitCenterOptim(HalpTest):
 class TestBitCenterSGD(TestBitCenterOptim, TestCase):
     @staticmethod
     def GetOptimizer(model, lr, weight_decay=0.0, n_train_sample=128,
-        cast_func=single_to_half_det, n_minibatch_per_epoch=128):
+        cast_func=single_to_half_det, minibatch_size=128):
         params = [x[1] for x in model.named_parameters()]
         names = [x[0] for x in model.named_parameters()]
         return BitCenterSGD(params, names, lr, 
             n_train_sample=n_train_sample, cast_func=cast_func,
-            n_minibatch_per_epoch=n_minibatch_per_epoch)
+            minibatch_size=minibatch_size)
 
     def FuncTestCacheProperty(self, param, name, cache, optimizer): 
         if cache is None:
@@ -64,19 +96,30 @@ class TestBitCenterSGD(TestBitCenterOptim, TestCase):
             assert list(param.shape) == list(cache.shape[1:])
             assert cache.size(0) == optimizer.n_minibatch_per_epoch
             assert not name.endswith("_lp")
+            # assert on GPU and not require_grad
             t_list = [(cache, torch.float16, False, False)]
             self.CheckLayerTensorProperty(t_list)
+
+    @staticmethod
+    def GetUpdatedCache(minibatch_idx, optimizer):
+        cache_list = []
+        for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
+            for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+                if cache is not None:
+                    cache_list.append(cache[minibatch_idx])
+        return cache_list
+
 
 
 class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
     @staticmethod
     def GetOptimizer(model, lr, weight_decay=0.0, n_train_sample=128,
-        cast_func=single_to_half_det, n_minibatch_per_epoch=128):
+        cast_func=single_to_half_det, minibatch_size=128):
         params = [x[1] for x in model.named_parameters()]
         names = [x[0] for x in model.named_parameters()]
         return BitCenterSVRG(params, names, lr,
             n_train_sample=n_train_sample, cast_func=cast_func,
-            n_minibatch_per_epoch=n_minibatch_per_epoch)
+            minibatch_size=minibatch_size)
 
     def FuncTestCacheProperty(self, param, name, cache, optimizer): 
         if cache is None:
@@ -84,8 +127,18 @@ class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
         else:
             assert list(param.shape) == list(cache.shape)
             assert not name.endswith("_lp")
+            # assert on GPU and not require_grad
             t_list = [(cache, torch.float16, True, False)]
             self.CheckLayerTensorProperty(t_list)
+
+    @staticmethod
+    def GetUpdatedCache(minibatch_idx, optimizer):
+        cache_list = []
+        for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
+            for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+                if cache is not None:
+                    cache_list.append(cache)
+        return cache_list
 
 
 

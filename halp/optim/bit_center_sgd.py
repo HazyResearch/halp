@@ -15,7 +15,7 @@ class BitCenterOptim(SGD):
     The base class for bit center optimizer: bit center SGD, bit center SVRG
     """
     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=128, cast_func=void_cast_func, n_minibatch_per_epoch=128):
+        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128):
         """
         The base class for bit centering style optimizers
         Argument:
@@ -41,8 +41,8 @@ class BitCenterOptim(SGD):
                              "(parameter groups)")
         self.param_groups[0]['params_name'] = params_name
         self.n_train_sample = n_train_sample
-        # self.n_minibatch_per_epoch = np.floor(self.n_train_sample / float(n_sample_per_minibatch))
-        self.n_minibatch_per_epoch = n_minibatch_per_epoch
+        self.n_minibatch_per_epoch = int(np.floor( (self.n_train_sample - 1) // float(minibatch_size)) + 1)
+        # self.n_minibatch_per_epoch = n_minibatch_per_epoch
         self.cast_func = cast_func
         self.step_iter = 0    # this is a iter for step_lp function
         self.cache_iter = 0   # this is a iter for updating the gradient cache
@@ -117,10 +117,10 @@ class BitCenterSGD(BitCenterOptim):
     Implementation of bit centering SGD
     """
     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=128, cast_func=void_cast_func, n_minibatch_per_epoch=128):
+        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128):
         super(BitCenterSGD, self).__init__(params, params_name, lr, 
             weight_decay, n_train_sample, cast_func, 
-            n_minibatch_per_epoch=n_minibatch_per_epoch)
+            minibatch_size=minibatch_size)
 
     def setup_single_grad_cache(self, grad_shape):
         cache_shape = [self.n_minibatch_per_epoch] + grad_shape
