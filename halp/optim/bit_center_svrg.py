@@ -7,8 +7,9 @@ from torch.optim import SGD
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 from halp.optim.bit_center_sgd import BitCenterOptim
 import logging
-
-logger = logging.getLogger('bit center svrg')
+import sys
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger = logging.getLogger('bit center sgd')
 
 
 class BitCenterSVRG(BitCenterOptim):
@@ -28,7 +29,7 @@ class BitCenterSVRG(BitCenterOptim):
     def update_single_grad_cache(self, grad, cache):
         if self.cache_iter % self.n_minibatch_per_epoch == 0:
             cache.zero_()
-        cache.add_(grad)
+        cache.add_(self.cast_func(grad))
         if (self.cache_iter + 1) % self.n_minibatch_per_epoch == 0:
             cache.div_(self.n_minibatch_per_epoch)
 

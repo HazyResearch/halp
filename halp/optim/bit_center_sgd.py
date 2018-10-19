@@ -6,7 +6,8 @@ from torch.optim.optimizer import required, Optimizer
 from torch.optim import SGD
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 import logging
-
+import sys
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('bit center sgd')
 
 
@@ -60,7 +61,9 @@ class BitCenterOptim(SGD):
             cache_group = dict()
             cache_group["cache"] = []
             for p, p_name in zip(group["params"], group["params_name"]):
-                if not p.requires_grad:
+                if (not p.requires_grad) \
+                  or (p_name.endswith("_lp")) \
+                  or (p_name.endswith("_delta")):
                     cache_group["cache"].append(None)
                     continue
                 grad_shape = list(p.size())
@@ -77,7 +80,7 @@ class BitCenterOptim(SGD):
         # TODO: need to sanity check when whole dataset size is not divided by the minibatch
         # to make sure the data idx in each minibatch is the same between the fp pass and lp pass
         for param_group, cache_group in zip(self.param_groups, self.grad_cache_groups):
-            for p, cache in zip(param_group, cache_group):
+            for p, cache in zip(param_group["params"], cache_group["cache"]):
                 if cache is None:
                     continue
                 self.update_single_grad_cache(p.grad, cache)
@@ -106,6 +109,7 @@ class BitCenterOptim(SGD):
         # TODO add sanity check and assertion to make sure the parameters comes out in the same order
         # during the entire training
         super(BitCenterOptim, self).step()
+        self.update_grad_cache()
 
 
     # def step(self):
@@ -127,7 +131,7 @@ class BitCenterSGD(BitCenterOptim):
         return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu()
 
     def update_single_grad_cache(self, grad, cache):
-        cache[self.cache_iter].copy_(grad.cpu())
+        cache[self.cache_iter].copy_(self.cast_func(grad.cpu()))
 
     def get_single_grad_offset(self, cache):
         # we assume the size of the first dimension is the minibatch size
