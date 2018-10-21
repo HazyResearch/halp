@@ -30,7 +30,8 @@ class TestBitCenterOptim(HalpTest):
         print(self.__class__, " cache property test passed!")
 
     @staticmethod
-    def FuncTestCacheUpdate():
+    def FuncTestCacheUpdate(cache_before, cache_after,
+                            is_first_update=False, is_last_update=False):
         pass
 
     def test_StepFP(self):
@@ -46,6 +47,8 @@ class TestBitCenterOptim(HalpTest):
         # step_fp is updating the cache properly
         for k in range(3):
             for i in range(n_minibatch):
+                if i == 0:
+                    optimizer.on_start_fp_steps()
                 start_idx = i * minibatch_size
                 end_idx = min((i + 1) * minibatch_size, n_train_sample)
                 fw_input = torch.Tensor(np.random.randn(end_idx - start_idx, model.n_feat_in[0])).cuda()
@@ -64,18 +67,11 @@ class TestBitCenterOptim(HalpTest):
                         self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
                     for cache_before, cache_after in \
                         zip(cache_list_before_update, cache_list_after_update):
-                        if (cache_before is None) and (cache_after is None):
-                            continue
-                        assert not (cache_before.cpu().numpy() == cache_after.cpu().numpy()).all()
-            # clear cache to 0 for next round test
-            for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
-                for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
-                    if cache is None:
-                        continue
-                    if not cache.is_cuda:
-                        cache.copy_(optimizer.cast_func(torch.zeros(cache.size())).cpu())
-                    else:
-                        cache.zero_()
+                        is_first_update = (i == 0)
+                        self.FuncTestCacheUpdate(cache_before, cache_after, 
+                            is_first_update=is_first_update)
+                if i == n_minibatch - 1:
+                    optimizer.on_end_fp_steps()
 
     @staticmethod
     def test_StepLP():
@@ -116,6 +112,13 @@ class TestBitCenterSGD(TestBitCenterOptim, TestCase):
                     cache_list.append(cache[minibatch_idx].clone())
         return cache_list
 
+    @staticmethod
+    def FuncTestCacheUpdate(cache_before, cache_after, 
+        is_first_update=False, is_last_update=False):
+        if (cache_before is None) and (cache_after is None):
+            return
+        assert (cache_before.cpu().numpy() == 0).all()
+
 
 
 class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
@@ -149,6 +152,14 @@ class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
                     cache_list.append(cache.clone())
         return cache_list
 
+    @staticmethod
+    def FuncTestCacheUpdate(cache_before, cache_after, 
+        is_first_update=False, is_last_update=False):
+        if (cache_before is None) and (cache_after is None):
+            return
+        assert not (cache_before.cpu().numpy() == cache_after.cpu().numpy()).all()
+        if is_first_update:
+            assert (cache_before.cpu().numpy() == 0).all()
 
 
 if __name__ == "__main__":

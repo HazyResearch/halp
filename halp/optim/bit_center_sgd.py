@@ -84,7 +84,6 @@ class BitCenterOptim(SGD):
                 if cache is None:
                     continue
                 self.update_single_grad_cache(p.grad, cache)
-        self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
     def get_single_grad_offset(self, cache, cache_iter=0):
         # cache iter is useful for bit centering SGD to retrieve gradient offset
@@ -93,11 +92,15 @@ class BitCenterOptim(SGD):
     def step_lp(self):
         for param_group, cache_group in zip(self.param_groups, self.grad_cache_groups):
             lr = torch.Tensor(np.array(group["lr"])).half()
-            for p, cache in zip(param_group["params"], cache_group["cache"]):
+            for p, p_name, cache in zip(param_group["params"], 
+                param_group["params_name"], cache_group["cache"]):
                 if not p.requires_grad:
                     if cache is not None:
                         logger.error("Suspicious cache exists for no-grad parameter")
                         raise ValueError("Suspicious cache exists for no-grad parameter")
+                    continue
+                elif not p_name.endswith("_delta"):
+                    # we only update the delta variables
                     continue
                 grad_offset = self.get_single_grad_offset(cache)
                 p.data.add_(-lr, p.grad.data)
@@ -108,8 +111,28 @@ class BitCenterOptim(SGD):
         # update all the blobs as usual, the uninvolved blobs has 0 gradient so effectively it is not updated
         # TODO add sanity check and assertion to make sure the parameters comes out in the same order
         # during the entire training
-        super(BitCenterOptim, self).step()
         self.update_grad_cache()
+        self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
+
+
+    def on_start_lp_steps(self):
+        pass
+
+    def on_end_lp_steps(self):
+        pass
+
+    def on_start_fp_steps(self):
+        for cache_group in self.grad_cache_groups:
+            for cache in cache_group["cache"]:
+                if cache is None:
+                    continue
+                if not cache.is_cuda:
+                    cache.copy_(self.cast_func(torch.zeros(cache.size())).cpu())
+                else:
+                    cache.zero_()
+        
+    def on_end_fp_steps(self):
+        pass
 
 
     # def step(self):
