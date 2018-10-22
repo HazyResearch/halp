@@ -112,31 +112,3 @@ class BitCenterLinear(nn.Linear):
         else:
             return self.forward_lp(input)
 
-
-# class BitCenterLinear(BitCenterLinearBase):
-#     def __init__(self, in_features, out_features, bias=True, 
-#         cast_func=single_to_half_det, n_train_sample=1):
-#         super(BitCenterLinear, self).__init__(in_features, out_features, 
-#             bias, cast_func, n_train_sample)
-
-    # def forward(self, input):
-    #     # Need to test do_offset mode whether gradient is updated properly
-    #     if self.do_offset:
-    #         if self.input_cache is None:
-    #             self.input_cache = self.setup_cache(input)
-    #             self.cache_iter = 0
-    #         self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)].data = self.cast_func(input.cpu())
-    #         self.cache_iter += input.size(0)
-    #         return F.linear(input, self.weight, self.bias)
-    #     else:
-    #         input_lp = self.input_cache[self.cache_iter:(self.cache_iter + input.size(0))].cuda()
-    #         input_delta = input
-    #         weight_lp = self.weight_lp
-    #         weight_delta = self.weight_delta
-    #         bias_lp = self.bias_lp
-    #         bias_delta = self.bias_delta
-    #         output = bit_center_linear(input_lp, input_delta, weight_lp, 
-    #             weight_delta, bias_lp, bias_delta)
-    #         self.cache_iter += input.size(0)
-    #         return output
-

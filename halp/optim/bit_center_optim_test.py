@@ -242,4 +242,5 @@ class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
 
 
 if __name__ == "__main__":
+    print(torch.__version__)
     unittest.mian()
