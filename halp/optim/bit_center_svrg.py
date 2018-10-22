@@ -27,19 +27,17 @@ class BitCenterSVRG(BitCenterOptim):
         return self.cast_func(torch.Tensor(np.zeros(cache_shape))).cuda()
 
     def update_single_grad_cache(self, grad, cache):
-        # if self.cache_iter % self.n_minibatch_per_epoch == 0:
-        #     cache.zero_()
         cache.add_(self.cast_func(grad))
-        # if (self.cache_iter + 1) % self.n_minibatch_per_epoch == 0:
-        #     cache.div_(self.n_minibatch_per_epoch)
 
     def get_single_grad_offset(self, cache):
         # we assume the size of the first dimension is the minibatch size
         return cache        
 
-    def on_end_fp_steps(self):
-        for cache_group in self.grad_cache_groups:
-            for cache in cache_group["cache"]:
-                if cache is not None:
-                    cache.div_(self.n_minibatch_per_epoch)
+    def on_end_fp_steps(self, model):
+        # for cache_group in self.grad_cache_groups:
+        for cache in self.grad_cache.values():
+            if cache is not None:
+                cache.div_(self.n_minibatch_per_epoch)
+        self.set_model_mode(model, do_offset=True)
+
 

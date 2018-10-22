@@ -30,7 +30,7 @@ class BitCenterLinearFunction(Function):
         grad_weight_delta = torch.mm(grad_output.t(), (input_lp + input_delta))
         grad_bias_lp = None
         if (bias_lp is not None) and (bias_delta is not None):
-            grad_bias_delta = grad_output.sum(0).squeeze(0)
+            grad_bias_delta = grad_output.sum(0)
         else:
             grad_bias_delta = None
         return grad_input_lp, grad_input_delta, grad_weight_lp, \

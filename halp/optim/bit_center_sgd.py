@@ -5,6 +5,7 @@ from torch.autograd import Variable
 from torch.optim.optimizer import required, Optimizer
 from torch.optim import SGD
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
+from halp.utils.utils import get_recur_attr
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -49,28 +50,23 @@ class BitCenterOptim(SGD):
         self.cache_iter = 0   # this is a iter for updating the gradient cache
         self.setup_grad_cache()
 
-
-
     def setup_single_grad_cache(self):
         # we assume the size of the first dimension is the minibatch size
         pass
 
     def setup_grad_cache(self):
-        self.grad_cache_groups = []
+        self.grad_cache = dict()
         for group in self.param_groups:
-            cache_group = dict()
-            cache_group["cache"] = []
             for p, p_name in zip(group["params"], group["params_name"]):
                 if (not p.requires_grad) \
                   or (p_name.endswith("_lp")) \
                   or (p_name.endswith("_delta")):
-                    cache_group["cache"].append(None)
+                    self.grad_cache[p_name] = None
                     continue
                 grad_shape = list(p.size())
                 cache = self.setup_single_grad_cache(grad_shape)
-                cache_group["cache"].append(cache)
+                self.grad_cache[p_name] = cache
                 logger.info(p_name + " cache setup.")
-            self.grad_cache_groups.append(cache_group)
         self.cache_iter = 0
 
     def update_single_grad_cache(self, grad, cache):
@@ -79,8 +75,9 @@ class BitCenterOptim(SGD):
     def update_grad_cache(self):
         # TODO: need to sanity check when whole dataset size is not divided by the minibatch
         # to make sure the data idx in each minibatch is the same between the fp pass and lp pass
-        for param_group, cache_group in zip(self.param_groups, self.grad_cache_groups):
-            for p, cache in zip(param_group["params"], cache_group["cache"]):
+        for param_group in self.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                cache = self.grad_cache[p_name]
                 if cache is None:
                     continue
                 self.update_single_grad_cache(p.grad, cache)
@@ -90,21 +87,20 @@ class BitCenterOptim(SGD):
         pass
 
     def step_lp(self):
-        for param_group, cache_group in zip(self.param_groups, self.grad_cache_groups):
-            lr = torch.Tensor(np.array(group["lr"])).half()
-            for p, p_name, cache in zip(param_group["params"], 
-                param_group["params_name"], cache_group["cache"]):
-                if not p.requires_grad:
-                    if cache is not None:
-                        logger.error("Suspicious cache exists for no-grad parameter")
-                        raise ValueError("Suspicious cache exists for no-grad parameter")
+        for param_group in self.param_groups:
+            lr = torch.Tensor(np.array(param_group["lr"])).half()
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                if not p_name.endswith("_delta"):
                     continue
-                elif not p_name.endswith("_delta"):
-                    # we only update the delta variables
-                    continue
+                cache = self.grad_cache[p_name.split("_delta")[0]]
                 grad_offset = self.get_single_grad_offset(cache)
+                if p.is_cuda:
+                    lr = lr.cuda()
                 p.data.add_(-lr, p.grad.data)
-                p.data.sub_(grad_offset)
+                if not grad_offset.is_cuda:   
+                   p.data.sub_(grad_offset.cuda())
+                else:
+                   p.data.sub_(grad_offset)
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
     def step_fp(self):
@@ -115,24 +111,55 @@ class BitCenterOptim(SGD):
         self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
 
-    def on_start_lp_steps(self):
-        pass
+    def set_model_mode(self, model, do_offset=False):
+        for param_group in self.param_groups:
+            for p_name in param_group["params_name"]:
+                if p_name.endswith("_delta"):
+                    layer_name_seq = p_name.split(".")[0:-1]
+                    get_recur_attr(model, layer_name_seq).set_mode(do_offset=do_offset)
 
-    def on_end_lp_steps(self):
-        pass
-
-    def on_start_fp_steps(self):
-        for cache_group in self.grad_cache_groups:
-            for cache in cache_group["cache"]:
-                if cache is None:
+    def update_offset_vars(self):
+        for param_group in self.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                if not p_name.endswith("_delta"):
                     continue
-                if not cache.is_cuda:
-                    cache.copy_(self.cast_func(torch.zeros(cache.size())).cpu())
-                else:
-                    cache.zero_()
+                # search for the
+                corr_found = False 
+                for param_offset_group in self.param_groups:
+                    for p_offset, p_offset_name in zip(param_offset_group["params"], param_offset_group["params_name"]):
+                        if p_offset_name == p_name.split("_delta")[0]:
+                            p_offset = p_offset + p.type(p_offset.dtype)
+                            corr_found = True
+                if corr_found == False:
+                    logger.error("Can not find offset var for ", p_name)
+                    raise Exception("Can not find offset var for ", p_name)
+
+    def clear_cache(self):
+        for cache in self.grad_cache.values():
+            if cache is None:
+                continue
+            if not cache.is_cuda:
+                cache.copy_(self.cast_func(torch.zeros(cache.size())).cpu())
+            else:
+                cache.zero_()
+
+    # note we set the mode of model using the following
+    # helpers. After each specific fp or lp phase,
+    # we set model back to do_offset=True as the defaut
+    # statues
+    def on_start_lp_steps(self, model):
+        self.set_model_mode(model, do_offset=False)
+
+    def on_end_lp_steps(self, model):
+        self.update_offset_vars()
+        self.set_model_mode(model, do_offset=True)
+
+    def on_start_fp_steps(self, model):
+        self.clear_cache()
+        self.set_model_mode(model, do_offset=True)
         
-    def on_end_fp_steps(self):
-        pass
+    def on_end_fp_steps(self, model):
+        self.set_model_mode(model, do_offset=True)
 
 
     # def step(self):
@@ -158,7 +185,7 @@ class BitCenterSGD(BitCenterOptim):
 
     def get_single_grad_offset(self, cache):
         # we assume the size of the first dimension is the minibatch size
-        return cache[self.n_iter]
+        return cache[self.step_iter]
 
 
 

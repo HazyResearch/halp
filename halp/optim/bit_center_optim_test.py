@@ -20,12 +20,13 @@ class TestBitCenterOptim(HalpTest):
 
     def test_CacheProperty(self):
         n_train_sample = np.random.randint(low=100, high=1000)
-        minibatch_size = np.random.randint(low=10, high=n_train_sample//10)
+        minibatch_size = np.random.randint(low=9, high=n_train_sample//10)
         model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
         optimizer = self.GetOptimizer(model, lr=0.5, weight_decay=0, 
             n_train_sample=n_train_sample, minibatch_size=minibatch_size)
-        for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
-            for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+        for param_group in optimizer.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                cache = optimizer.grad_cache[p_name]
                 self.FuncTestCacheProperty(p, p_name, cache, optimizer)
         print(self.__class__, " cache property test passed!")
 
@@ -34,7 +35,46 @@ class TestBitCenterOptim(HalpTest):
                             is_first_update=False, is_last_update=False):
         pass
 
-    def test_StepFP(self):
+    # def test_Step(self):
+    #     # test grad cache is udpated properly
+    #     # test the involved grad got generated
+    #     n_train_sample = np.random.randint(low=100, high=1000)
+    #     minibatch_size = np.random.randint(low=9, high=n_train_sample//10)
+    #     model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
+    #     optimizer = self.GetOptimizer(model, lr=0.0005, weight_decay=0, 
+    #         n_train_sample=n_train_sample, minibatch_size=minibatch_size)
+    #     n_minibatch = int(np.ceil(n_train_sample / float(minibatch_size)))      
+    #     # test in 3 consecutive epochs
+    #     # step_fp is updating the cache properly
+    #     for k in range(3):
+    #         for i in range(n_minibatch):
+    #             if i == 0:
+    #                 optimizer.on_start_fp_steps(model)
+    #             start_idx = i * minibatch_size
+    #             end_idx = min((i + 1) * minibatch_size, n_train_sample)
+    #             fw_input = torch.Tensor(np.random.randn(end_idx - start_idx, model.n_feat_in[0])).cuda()
+    #             fw_label = torch.Tensor(np.random.randn(end_idx - start_idx, 1)).cuda()
+    #             loss = model.forward(fw_input, fw_label)
+    #             loss.backward()
+    #             # get the grad cache before fp step
+    #             if k == 0 and i == 0:
+    #                 optimizer.step_fp()
+    #             else:
+    #                 cache_list_before_update = \
+    #                     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+    #                 optimizer.step_fp()
+    #                 # get the grad cache after fp step
+    #                 cache_list_after_update = \
+    #                     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+    #                 for cache_before, cache_after in \
+    #                     zip(cache_list_before_update, cache_list_after_update):
+    #                     is_first_update = (i == 0)
+    #                     self.FuncTestCacheUpdate(cache_before, cache_after, 
+    #                         is_first_update=is_first_update)
+    #             if i == n_minibatch - 1:
+    #                 optimizer.on_end_fp_steps(model)
+
+    def test_Step(self):
         # test grad cache is udpated properly
         # test the involved grad got generated
         n_train_sample = np.random.randint(low=100, high=1000)
@@ -46,9 +86,10 @@ class TestBitCenterOptim(HalpTest):
         # test in 3 consecutive epochs
         # step_fp is updating the cache properly
         for k in range(3):
+            # do fp loops
             for i in range(n_minibatch):
                 if i == 0:
-                    optimizer.on_start_fp_steps()
+                    optimizer.on_start_fp_steps(model)
                 start_idx = i * minibatch_size
                 end_idx = min((i + 1) * minibatch_size, n_train_sample)
                 fw_input = torch.Tensor(np.random.randn(end_idx - start_idx, model.n_feat_in[0])).cuda()
@@ -56,27 +97,43 @@ class TestBitCenterOptim(HalpTest):
                 loss = model.forward(fw_input, fw_label)
                 loss.backward()
                 # get the grad cache before fp step
-                if k == 0 and i == 0:
-                    optimizer.step_fp()
-                else:
-                    cache_list_before_update = \
-                        self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
-                    optimizer.step_fp()
-                    # get the grad cache after fp step
-                    cache_list_after_update = \
-                        self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
-                    for cache_before, cache_after in \
-                        zip(cache_list_before_update, cache_list_after_update):
-                        is_first_update = (i == 0)
-                        self.FuncTestCacheUpdate(cache_before, cache_after, 
-                            is_first_update=is_first_update)
+                cache_list_before_update = \
+                    self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                optimizer.step_fp()
+                # get the grad cache after fp step
+                cache_list_after_update = \
+                    self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                for cache_before, cache_after in \
+                    zip(cache_list_before_update, cache_list_after_update):
+                    is_first_update = (i == 0)
+                    self.FuncTestCacheUpdate(cache_before, cache_after, 
+                        is_first_update=is_first_update)
                 if i == n_minibatch - 1:
-                    optimizer.on_end_fp_steps()
-
-    @staticmethod
-    def test_StepLP():
-        pass
-
+                    optimizer.on_end_fp_steps(model)
+            # do lp loops
+            for i in range(n_minibatch):
+                if i == 0:
+                    optimizer.on_start_lp_steps(model)
+                start_idx = i * minibatch_size
+                end_idx = min((i + 1) * minibatch_size, n_train_sample)
+                fw_input = optimizer.cast_func(torch.Tensor(np.random.randn(end_idx - start_idx, model.n_feat_in[0])).cuda())
+                fw_label = optimizer.cast_func(torch.Tensor(np.random.randn(end_idx - start_idx, 1)).cuda())
+                loss = model.forward(fw_input, fw_label)
+                loss.backward()
+                # # get the grad cache before fp step
+                # cache_list_before_update = \
+                #     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                optimizer.step_lp()
+                # get the grad cache after fp step
+                # cache_list_after_update = \
+                #     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                # for cache_before, cache_after in \
+                #     zip(cache_list_before_update, cache_list_after_update):
+                #     is_first_update = (i == 0)
+                #     self.FuncTestCacheUpdate(cache_before, cache_after, 
+                #         is_first_update=is_first_update)
+                if i == n_minibatch - 1:
+                    optimizer.on_end_lp_steps(model)
 
 
 class TestBitCenterSGD(TestBitCenterOptim, TestCase):
@@ -105,8 +162,9 @@ class TestBitCenterSGD(TestBitCenterOptim, TestCase):
     @staticmethod
     def GetUpdatedCache(minibatch_idx, optimizer):
         cache_list = []
-        for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
-            for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+        for param_group in optimizer.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                cache = optimizer.grad_cache[p_name]
                 if cache is not None:
                     # print("check idx ", minibatch_idx, cache.size(), cache.cuda()[minibatch_idx])
                     cache_list.append(cache[minibatch_idx].clone())
@@ -146,8 +204,9 @@ class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
     @staticmethod
     def GetUpdatedCache(minibatch_idx, optimizer):
         cache_list = []
-        for param_group, cache_group in zip(optimizer.param_groups, optimizer.grad_cache_groups):
-            for p, p_name, cache in zip(param_group["params"], param_group["params_name"], cache_group["cache"]):
+        for param_group in optimizer.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                cache = optimizer.grad_cache[p_name]
                 if cache is not None:
                     cache_list.append(cache.clone())
         return cache_list
