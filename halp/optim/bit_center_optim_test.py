@@ -6,13 +6,29 @@ from halp.optim.bit_center_sgd import BitCenterSGD
 from halp.optim.bit_center_svrg import BitCenterSVRG
 from unittest import TestCase
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
+from copy import deepcopy
 
 
-# TODO:
-# test1, the corresponding cache has the right property, and are property setup for necessary parameters only
-# test2, cache are updated and used in the right way
-# test3, for step fp check if the gradients is updated properly focus similaly to test 4
-# test4, for step lp gradient is updated properly, i.e. focus on the 0 gradients for uninvolved parameters
+def GetAllParameterStates(optimizer):
+    param_dict = dict()
+    for param_group in optimizer.param_groups:
+        for p, p_name in zip(param_group["params"], param_group["params_name"]):
+            param_dict[p_name] = p.clone()
+    return param_dict
+
+def GetAllGradOffset(optimizer):
+    grad_offset_dict = dict()
+    for param_group in optimizer.param_groups:
+        for p, p_name in zip(param_group["params"], param_group["params_name"]):
+            if p_name.endswith("_delta"):
+                cache = optimizer.grad_cache[p_name.split("_delta")[0]]
+                # note the offset in cache is only correctly fetched if this function
+                # is called before lp_step
+                grad_offset = optimizer.get_single_grad_offset(cache)
+                grad_offset_dict[p_name] = grad_offset.clone()
+    return grad_offset_dict
+
+
 class TestBitCenterOptim(HalpTest):
     @staticmethod
     def FuncTestCacheProperty(model, optimizer):
@@ -74,17 +90,52 @@ class TestBitCenterOptim(HalpTest):
     #             if i == n_minibatch - 1:
     #                 optimizer.on_end_fp_steps(model)
 
+    def FuncTestLPStep(self, optimizer, param_dict_prev, grad_offset_dict, 
+                       is_first_update=False, is_last_update=False):
+        for param_group in optimizer.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                p_prev = param_dict_prev[p_name]
+                if p_name.endswith("_delta"):
+                    if is_first_update:
+                        assert (p_prev.cpu().detach().numpy() == 0.0).all()
+                    new_p = param_dict_prev[p_name] \
+                        - torch.Tensor(np.array(param_group["lr"])).half().cuda() * p.grad \
+                        - grad_offset_dict[p_name].cuda()
+                    # atol is selected to not asserting on denormal values for half precision
+                    np.testing.assert_allclose(new_p.cpu().detach().numpy(), 
+                        p.cpu().detach().numpy(), atol=6.2e-5, rtol=1e-5)
+                elif p_name.endswith("_lp"):
+                    assert (p_prev.cpu().detach().numpy() == p.cpu().detach().numpy()).all()
+                else: # this branch check the offset variables
+                    if is_last_update:
+                        assert not (p_prev.cpu().detach().numpy() == p.cpu().detach().numpy()).all()
+                    else:
+                        assert (p_prev.cpu().detach().numpy() == p.cpu().detach().numpy()).all()
+
+    def FuncTestFPStep(self, optimizer, param_dict_prev):
+        for param_group in optimizer.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                p_prev = param_dict_prev[p_name]
+                assert (p_prev.cpu().detach().numpy() == p.cpu().detach().numpy()).all()
+
+
     def test_Step(self):
-        # test grad cache is udpated properly
-        # test the involved grad got generated
+        """
+        test grad cache is udpated properly: test the involved grad got generated
+        for fp step, we test in 3 consecutive epochs to make sure
+        step_fp is updating the cache properly
+        for lp step, we test:
+        first iter clears delta;
+        last iter adds back to offset;
+        in normal iterations, only delta is property is updated.
+        """
         n_train_sample = np.random.randint(low=100, high=1000)
         minibatch_size = np.random.randint(low=9, high=n_train_sample//10)
         model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
         optimizer = self.GetOptimizer(model, lr=0.0005, weight_decay=0, 
             n_train_sample=n_train_sample, minibatch_size=minibatch_size)
         n_minibatch = int(np.ceil(n_train_sample / float(minibatch_size)))      
-        # test in 3 consecutive epochs
-        # step_fp is updating the cache properly
+
         for k in range(3):
             # do fp loops
             for i in range(n_minibatch):
@@ -99,10 +150,14 @@ class TestBitCenterOptim(HalpTest):
                 # get the grad cache before fp step
                 cache_list_before_update = \
                     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                param_dict_before_update = \
+                    GetAllParameterStates(optimizer)
                 optimizer.step_fp()
                 # get the grad cache after fp step
                 cache_list_after_update = \
                     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                self.FuncTestFPStep(optimizer, param_dict_before_update)
+                # test if the cache is properly maintained
                 for cache_before, cache_after in \
                     zip(cache_list_before_update, cache_list_after_update):
                     is_first_update = (i == 0)
@@ -120,20 +175,24 @@ class TestBitCenterOptim(HalpTest):
                 fw_label = optimizer.cast_func(torch.Tensor(np.random.randn(end_idx - start_idx, 1)).cuda())
                 loss = model.forward(fw_input, fw_label)
                 loss.backward()
-                # # get the grad cache before fp step
-                # cache_list_before_update = \
-                #     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
+                # get param state before update steps
+                param_dict_before_update = \
+                    GetAllParameterStates(optimizer)
+                grad_offset_dict = GetAllGradOffset(optimizer)
                 optimizer.step_lp()
-                # get the grad cache after fp step
-                # cache_list_after_update = \
-                #     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
-                # for cache_before, cache_after in \
-                #     zip(cache_list_before_update, cache_list_after_update):
-                #     is_first_update = (i == 0)
-                #     self.FuncTestCacheUpdate(cache_before, cache_after, 
-                #         is_first_update=is_first_update)
+                is_first_update = False
+                is_last_update = False
+                if i == 0:
+                    is_first_update = True
+                if i == n_minibatch - 1:
+                    is_last_update = True
                 if i == n_minibatch - 1:
                     optimizer.on_end_lp_steps(model)
+                # test update procedures
+                # print("test condition ", is_first_update, is_last_update)
+                self.FuncTestLPStep(optimizer, param_dict_before_update, grad_offset_dict,
+                    is_first_update, is_last_update)
+
 
 
 class TestBitCenterSGD(TestBitCenterOptim, TestCase):

@@ -20,20 +20,12 @@ class BitCenterOptim(SGD):
         n_train_sample=128, cast_func=void_cast_func, minibatch_size=128):
         """
         The base class for bit centering style optimizers
-        Argument:
+        The bit centering optimizer can be used with calling step_fp for compute offset
+        and with calling step_lp for compute delta.
+        The non bit centering version of the same update rule can be implemented only using
+        step_fp for updates.
         """
-        # TODO setup gradient cache using a member function
-        # Question: how to deal with the zero gradient thing?
-        # Solution 1: remember to clear gradient everytime so that we can add the zero gradient for those not involved parameters
-        # Solution 2: distinguish with variable name?
-        # TODO Define a fp step function to compute and catch gradient
-        # TODO Define a lp step function to compute and update delta
-        # The Design principle: 1. bit centering optimizer by calling step_lp and step_fp
-        # 2. the full precision base optimizer can be implemented via only calling step_fp
-        # TODO Consider add the parameter T to decide where to switch fp and lp step 
-        # 
-        # TODO double check make sure we when a tensor is not involved, the gradient is 0 if it uses
-        # model update operation.
+        # TODO (Jian) Considering merge step_fp and step_lp into a single step function
         defaults = dict(lr=lr, weight_decay=weight_decay)
         super(BitCenterOptim, self).__init__(params, **defaults)
         if len(self.param_groups) != 1:
@@ -80,7 +72,7 @@ class BitCenterOptim(SGD):
                 cache = self.grad_cache[p_name]
                 if cache is None:
                     continue
-                self.update_single_grad_cache(p.grad, cache)
+                self.update_single_grad_cache(p.grad * param_group["lr"], cache)
 
     def get_single_grad_offset(self, cache, cache_iter=0):
         # cache iter is useful for bit centering SGD to retrieve gradient offset
@@ -128,7 +120,8 @@ class BitCenterOptim(SGD):
                 for param_offset_group in self.param_groups:
                     for p_offset, p_offset_name in zip(param_offset_group["params"], param_offset_group["params_name"]):
                         if p_offset_name == p_name.split("_delta")[0]:
-                            p_offset = p_offset + p.type(p_offset.dtype)
+                            # p_offset = p_offset + p.type(p_offset.dtype)
+                            p_offset.data.add_(p.data.type(p_offset.dtype))
                             corr_found = True
                 if corr_found == False:
                     logger.error("Can not find offset var for ", p_name)
@@ -143,11 +136,18 @@ class BitCenterOptim(SGD):
             else:
                 cache.zero_()
 
+    def reset_delta_vars(self):
+        for param_group in self.param_groups:
+            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+                if p_name.endswith("_delta"):
+                    p.data.zero_()
+
     # note we set the mode of model using the following
     # helpers. After each specific fp or lp phase,
     # we set model back to do_offset=True as the defaut
     # statues
     def on_start_lp_steps(self, model):
+        self.reset_delta_vars()
         self.set_model_mode(model, do_offset=False)
 
     def on_end_lp_steps(self, model):
@@ -181,6 +181,7 @@ class BitCenterSGD(BitCenterOptim):
         return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu()
 
     def update_single_grad_cache(self, grad, cache):
+        # the input grad is actually grad * lr in function update_grad_cache
         cache[self.cache_iter].copy_(self.cast_func(grad.cpu()))
 
     def get_single_grad_offset(self, cache):
