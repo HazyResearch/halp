@@ -51,45 +51,6 @@ class TestBitCenterOptim(HalpTest):
                             is_first_update=False, is_last_update=False):
         pass
 
-    # def test_Step(self):
-    #     # test grad cache is udpated properly
-    #     # test the involved grad got generated
-    #     n_train_sample = np.random.randint(low=100, high=1000)
-    #     minibatch_size = np.random.randint(low=9, high=n_train_sample//10)
-    #     model = self.GetMultipleLayerLinearModel(n_layer=3, n_train_sample=n_train_sample)
-    #     optimizer = self.GetOptimizer(model, lr=0.0005, weight_decay=0, 
-    #         n_train_sample=n_train_sample, minibatch_size=minibatch_size)
-    #     n_minibatch = int(np.ceil(n_train_sample / float(minibatch_size)))      
-    #     # test in 3 consecutive epochs
-    #     # step_fp is updating the cache properly
-    #     for k in range(3):
-    #         for i in range(n_minibatch):
-    #             if i == 0:
-    #                 optimizer.on_start_fp_steps(model)
-    #             start_idx = i * minibatch_size
-    #             end_idx = min((i + 1) * minibatch_size, n_train_sample)
-    #             fw_input = torch.Tensor(np.random.randn(end_idx - start_idx, model.n_feat_in[0])).cuda()
-    #             fw_label = torch.Tensor(np.random.randn(end_idx - start_idx, 1)).cuda()
-    #             loss = model.forward(fw_input, fw_label)
-    #             loss.backward()
-    #             # get the grad cache before fp step
-    #             if k == 0 and i == 0:
-    #                 optimizer.step_fp()
-    #             else:
-    #                 cache_list_before_update = \
-    #                     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
-    #                 optimizer.step_fp()
-    #                 # get the grad cache after fp step
-    #                 cache_list_after_update = \
-    #                     self.GetUpdatedCache(minibatch_idx=i, optimizer=optimizer)
-    #                 for cache_before, cache_after in \
-    #                     zip(cache_list_before_update, cache_list_after_update):
-    #                     is_first_update = (i == 0)
-    #                     self.FuncTestCacheUpdate(cache_before, cache_after, 
-    #                         is_first_update=is_first_update)
-    #             if i == n_minibatch - 1:
-    #                 optimizer.on_end_fp_steps(model)
-
     def FuncTestLPStep(self, optimizer, param_dict_prev, grad_offset_dict, 
                        is_first_update=False, is_last_update=False):
         for param_group in optimizer.param_groups:
