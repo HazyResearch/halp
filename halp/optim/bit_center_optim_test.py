@@ -63,8 +63,11 @@ class TestBitCenterOptim(HalpTest):
                         - torch.Tensor(np.array(param_group["lr"])).half().cuda() * p.grad \
                         - grad_offset_dict[p_name].cuda()
                     # atol is selected to not asserting on denormal values for half precision
+                    # rtol test at least if the values are in neighbor positions
+                    # in the of the float point grid, we require a bit stricter with
+                    # a factor of 8.0
                     np.testing.assert_allclose(new_p.cpu().detach().numpy(), 
-                        p.cpu().detach().numpy(), atol=6.2e-5, rtol=1e-5)
+                        p.cpu().detach().numpy(), atol=6.2e-5, rtol=1.0/1024.0/8.0)
                 elif p_name.endswith("_lp"):
                     assert (p_prev.cpu().detach().numpy() == p.cpu().detach().numpy()).all()
                 else: # this branch check the offset variables
