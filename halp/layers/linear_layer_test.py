@@ -7,10 +7,7 @@ from torch.autograd import gradcheck
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 from unittest import TestCase
 from halp.utils.test_utils import HalpTest
-import torch.nn.functional as F
 from torch.autograd.gradcheck import get_numerical_jacobian, iter_tensors, make_jacobian
-from itertools import product
-import six
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -121,63 +118,53 @@ class TestBitCenterLinearLayer(HalpTest, TestCase):
         self.CheckLayerTensorProperty(t_list)
         self.CheckLayerTensorGradProperty(t_list)
 
-    # def test_BitCenterLinearLayerFwBwCheck(self, cast_func=single_to_half_det):
-    #     # check if the behavior of BitCentering linear layer is going as expected for forward
-    #     # the backward behavior is guaranteed by 
-    #     # bit center linear function test TestBitCenterLinearFuncGradientCheck
-    #     n_sample = 98
-    #     n_dim = 13
-    #     n_out_dim = 31
-    #     minibatch_size = 33
-    #     n_minibatch = int(np.ceil(n_sample / minibatch_size))
-    #     use_bias = True
-    #     layer = BitCenterLinear(in_features=n_dim, out_features=n_out_dim, 
-    #         bias=use_bias, cast_func=cast_func, n_train_sample=n_sample)
-    #     layer.set_mode(do_offset=True)
-    #     layer.cuda()
-    #     input_tensor_list = []
-    #     if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
-    #         self.CheckBitCenterLinearBaseTensorProperty(layer)
-    #     for i in range(n_minibatch):
-    #         start_idx = i * minibatch_size
-    #         end_idx = min((i + 1) * minibatch_size, n_sample)
-    #         if i !=0:
-    #             input_cache_before = layer.input_cache[start_idx:end_idx].clone().numpy()
-    #             grad_input_cache_before = layer.grad_output_cache[start_idx:end_idx].clone().numpy()
-    #         input_tensor = torch.randn(end_idx - start_idx, n_dim, dtype=torch.float32, requires_grad=True).cuda()        
-    #         output = layer(input_tensor)
-    #         input_tensor_list.append(input_tensor)
-    #         torch.sum(output).backward()
-    #         if i != 0:
-    #             input_cache_after = layer.input_cache[start_idx:end_idx, :].numpy()
-    #             grad_input_cache_after = layer.grad_output_cache[start_idx:end_idx, :].numpy()
-    #             assert (input_cache_before == 0).all()
-    #             assert (grad_input_cache_before == 0).all()
-    #             assert (input_cache_before != input_cache_after).all()
-    #             assert (grad_input_cache_before != grad_input_cache_after).all()
-
-    #     layer.set_mode(do_offset=False)
-    #     if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
-    #         self.CheckBitCenterLinearBaseTensorProperty(layer)
-    #     for i in range(n_minibatch):
-    #         input_lp = layer.input_cache[layer.cache_iter:(layer.cache_iter + input_tensor_list[i].size(0))].cuda()
-    #         output = layer.forward(cast_func(input_tensor_list[i]))
-    #         torch.sum(output).backward()
-    #         output_ref = torch.mm(cast_func(input_tensor_list[i]), layer.weight_lp.t())\
-    #             + torch.mm((input_lp + cast_func(input_tensor_list[i])), layer.weight_delta.t())    
-    #         # print("inter type ", layer.weight_lp.t().data.cpu().numpy().dtype)    
-    #         # output_ref = np.dot(input_tensor_list[i].data.cpu().numpy().astype(np.float16), layer.weight_lp.t().data.cpu().numpy().astype(np.float16))\
-    #         #     + np.dot((input_lp.data.cpu().numpy().astype(np.float16) + input_tensor_list[i].data.cpu().numpy().astype(np.float16)), layer.weight_delta.t().data.cpu().numpy().astype(np.float16))
-    #         if use_bias:
-    #             output_ref += (layer.bias_delta + layer.bias_lp).unsqueeze(0).expand_as(output_ref)
-    #             # output_ref += (layer.bias_delta.data.cpu().numpy().astype(np.float16) + layer.bias_lp.data.cpu().numpy().astype(np.float16))
-    #         output_np = output.cpu().data.numpy()
-    #         # output_ref_np = output_ref
-    #         output_ref_np = output_ref.cpu().data.numpy()
-    #         np.testing.assert_array_almost_equal(output_np, output_ref_np)
-    #     if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
-    #         self.CheckBitCenterLinearBaseTensorProperty(layer)
-    #     print("Bit centering linear layer test passed!")
+    def test_BitCenterLinearLayerFwBwCheck(self, cast_func=single_to_half_det):
+        # check if the behavior of BitCentering linear layer is going as expected for forward
+        # the backward behavior is guaranteed by 
+        # bit center linear function test TestBitCenterLinearFuncGradientCheck
+        n_sample = 98
+        n_dim = 13
+        n_out_dim = 31
+        minibatch_size = 33
+        n_minibatch = int(np.ceil(n_sample / minibatch_size))
+        for use_bias in [True, False]:
+            # use_bias = True
+            layer = BitCenterLinear(in_features=n_dim, out_features=n_out_dim, 
+                bias=use_bias, cast_func=cast_func, n_train_sample=n_sample)
+            # test fp mode
+            layer.set_mode(do_offset=True)
+            layer.cuda()
+            input_tensor_list = []
+            if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
+                self.CheckBitCenterLinearBaseTensorProperty(layer)
+            for i in range(n_minibatch):
+                start_idx = i * minibatch_size
+                end_idx = min((i + 1) * minibatch_size, n_sample)
+                if i !=0:
+                    input_cache_before = layer.input_cache[start_idx:end_idx].clone().numpy()
+                    grad_input_cache_before = layer.grad_output_cache[start_idx:end_idx].clone().numpy()
+                input_tensor = torch.randn(end_idx - start_idx, n_dim, dtype=torch.float32, requires_grad=True).cuda()        
+                output = layer(input_tensor)
+                input_tensor_list.append(input_tensor)
+                torch.sum(output).backward()
+                if i != 0:
+                    input_cache_after = layer.input_cache[start_idx:end_idx, :].numpy()
+                    grad_input_cache_after = layer.grad_output_cache[start_idx:end_idx, :].numpy()
+                    assert (input_cache_before == 0).all()
+                    assert (grad_input_cache_before == 0).all()
+                    assert (input_cache_before != input_cache_after).all()
+                    assert (grad_input_cache_before != grad_input_cache_after).all()
+            # test lp mode
+            layer.set_mode(do_offset=False)
+            if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
+                self.CheckBitCenterLinearBaseTensorProperty(layer)
+            for i in range(n_minibatch):
+                input_lp = layer.input_cache[layer.cache_iter:(layer.cache_iter + input_tensor_list[i].size(0))].cuda()
+                output = layer.forward(cast_func(input_tensor_list[i]))
+                torch.sum(output).backward()
+            if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
+                self.CheckBitCenterLinearBaseTensorProperty(layer)
+        print("Bit centering linear layer test passed!")
 
 
 if __name__ == "__main__":

@@ -105,18 +105,27 @@ class BitCenterLinear(nn.Linear):
         # as this is a class member function
         # logger.info(self.__class__.__name__ + " updating grad output cache")
         if self.do_offset:
-            self.grad_output_cache[self.grad_cache_iter:min(self.grad_cache_iter + output[0].size()[0], self.n_train_sample)].data.copy_(self.cast_func(output[0].cpu()))
+            self.grad_output_cache[self.grad_cache_iter:min(self.grad_cache_iter + output[0].size()[0], 
+                self.n_train_sample)].data.copy_(self.cast_func(output[0].cpu()))
             self.grad_cache_iter = (self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
             # we use the following variable only for test purpose, we want to be able to access
             # the gradeint value wrt input in the outside world. For lp mode, it is grad_input_delta
             # for fp mode, it is grad_input
-            self.input_grad_for_test = input[1] # hard code the order of tensor in the input list (can be layer specific)
+            # TODO: update if pytorch stable version fixes this:
+            # The following branch is due to the layer specific behavior of 
+            # input argument to the backward hook. 
+            # Here we hard code the order of tensor in the input list (this is layer specific)
+            if self.bias is not None:
+                self.input_grad_for_test = input[1] 
+            else:
+                self.input_grad_for_test = input[0]
         else:
             self.input_grad_for_test = input[0]
 
     def update_input_cache(self, input):
         if self.do_offset:
-            self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], self.n_train_sample)].data.copy_(self.cast_func(input.cpu()))
+            self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], 
+                self.n_train_sample)].data.copy_(self.cast_func(input.cpu()))
             self.cache_iter = (self.cache_iter + input.size(0)) % self.n_train_sample
 
     def forward_fp(self, input):
