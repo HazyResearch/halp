@@ -15,3 +15,6 @@ def get_recur_attr(obj, attr_str_list):
 	else:
 		sub_obj = getattr(obj, attr_str_list[0])
 		return get_recur_attr(sub_obj, attr_str_list[1:])
+
+def void_func():
+	pass

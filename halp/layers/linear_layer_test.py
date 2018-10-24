@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 from halp.layers.linear_layer import BitCenterLinear, bit_center_linear
@@ -36,8 +37,8 @@ class TestBitCenterLinearLayer(HalpTest, TestCase):
         torch.cuda.manual_seed_all(0)
         for bias in [True, False]:
             for i in range(10):
-                layer = BitCenterLinear(dim_in, dim_out, bias=bias, 
-                    cast_func=void_cast_func, n_train_sample=minibatch_size)
+                layer = BitCenterLinear(in_features=dim_in, out_features=dim_out, 
+                    bias=bias, cast_func=void_cast_func, n_train_sample=minibatch_size)
                 layer.double()
                 input_delta = torch.randn(minibatch_size, dim_in, dtype=torch.double, requires_grad=True).cuda()
                 input_fp = torch.randn(minibatch_size, dim_in, dtype=torch.double, requires_grad=True).cuda()
@@ -170,7 +171,3 @@ class TestBitCenterLinearLayer(HalpTest, TestCase):
 if __name__ == "__main__":
     print(torch.__version__)
     unittest.mian()
-    # test = TestBitCenterLinearLayer()
-    # test.test_BitCenterLinearFuncGradientCheck()
-
-
