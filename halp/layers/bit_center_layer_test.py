@@ -172,7 +172,3 @@ class TestBitCenterLayer(HalpTest):
                 self.check_layer_param_and_cache(layer)
         print(self.__class__.__name__ + " layer test passed!")
 
-
-# if __name__ == "__main__":
-#     print(torch.__version__)
-#     unittest.mian()
