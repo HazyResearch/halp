@@ -27,8 +27,9 @@ class TestBitCenterLayer(HalpTest):
         """
         pass
 
-    def get_analytical_grad(self, layer):
+    def get_analytical_grad(self, layer, input_fp, input_delta):
         layer.set_mode(do_offset=True)
+        grad_list = []
         output_fp = layer(input_fp)
         output_fp_copy = output_fp.data.clone()
         loss_fp = torch.sum(0.5*output_fp*output_fp)
@@ -40,15 +41,18 @@ class TestBitCenterLayer(HalpTest):
         loss_lp = torch.sum(0.5*output_lp*output_lp)
         loss_lp.backward()
         grad_input_delta = layer.input_grad_for_test.clone()
-
-        weight_grad = layer.weight.grad + layer.weight_delta.grad
-        if layer.bias is not None:
-            bias_grad = layer.bias.grad + layer.bias_delta.grad
         # as we only have 1 minibatch, we can directly use layer.grad_output_cache
         input_grad = grad_input_fp + grad_input_delta
-        return output_lp + output_fp, [input_grad, weight_grad, bias_grad]
+        grad_list.append(input_grad)
 
-    def get_numerical_grad(self, layer):
+        weight_grad = layer.weight.grad + layer.weight_delta.grad
+        grad_list.append(weight_grad)
+        if layer.bias is not None:
+            bias_grad = layer.bias.grad + layer.bias_delta.grad
+            grad_list.append(bias_grad)
+        return output_lp + output_fp, grad_list
+
+    def get_numerical_grad(self, layer, input_fp, input_delta, perturb_eps):
         # get numerical finite difference
         layer.set_mode(do_offset=True)
         def get_loss(x):
@@ -65,12 +69,12 @@ class TestBitCenterLayer(HalpTest):
         grad_list.append(num_input_grad)
         num_weight_grad = get_numerical_jacobian(get_loss, input_fp + input_delta, 
             target=layer.weight, eps=perturb_eps)
-        grad_list.append(num_input_grad)
+        grad_list.append(num_weight_grad)
         if layer.bias is not None:
             num_bias_grad = get_numerical_jacobian(get_loss, input_fp + input_delta, 
                 target=layer.bias, eps=perturb_eps)
             grad_list.append(num_bias_grad)
-        return output, grad_list
+        return output_final, grad_list
 
     def test_forward_backward_output(self):
         # test if backward is synced with forward in double mode
@@ -89,19 +93,22 @@ class TestBitCenterLayer(HalpTest):
         torch.cuda.manual_seed_all(0)
         for bias in [True, False]:
             for i in range(10):
-                layer, input_fp, input_delta = self.prepare_layer(minibatch_size, dim_in, dim_out, bias)
-                analytical_output, analytical_grads = self.get_analytical_grad(layer)
-                numerical_output, numerical_grads = self.get_numerical_grad(layer)
+                layer, input_fp, input_delta = \
+                    self.prepare_layer(minibatch_size, dim_in, dim_out, bias, do_double=True)
+                analytical_output, analytical_grads = \
+                    self.get_analytical_grad(layer, input_fp, input_delta)
+                numerical_output, numerical_grads = \
+                    self.get_numerical_grad(layer, input_fp, input_delta, perturb_eps)
                 assert len(analytical_grads) == len(numerical_grads)
 
                 np.testing.assert_allclose(analytical_output.data.cpu().numpy().ravel(), 
                     numerical_output.data.cpu().numpy().ravel(), 
                     rtol=rtol_num_analytical_grad)
                 for ana_grad, num_grad in zip(analytical_grads, numerical_grads):
-                    np.testing.assert_allclose(analytical_grads.data.cpu().numpy().ravel(), 
-                        numerical_grads.data.cpu().numpy().ravel(), 
+                    np.testing.assert_allclose(ana_grad.data.cpu().numpy().ravel(), 
+                        num_grad.data.cpu().numpy().ravel(), 
                         rtol=rtol_num_analytical_grad)
-        logger.info("Bit centering linear function test passed!")
+        logger.info(self.__class__.__name__ + " function test passed!")
 
     def check_layer_param_and_cache(self, layer):
         t_list = [(layer.weight, torch.float32, True, True), 
@@ -128,10 +135,8 @@ class TestBitCenterLayer(HalpTest):
         n_minibatch = int(np.ceil(n_sample / minibatch_size))
         for use_bias in [True, False]:
             # use_bias = True
-            layer, _, _ = self.prepare_layer(minibatch_size, dim_in, dim_out, bias)
-
-            # layer = BitCenterLinear(in_features=n_dim, out_features=n_out_dim, 
-            #     bias=use_bias, cast_func=cast_func, n_train_sample=n_sample)
+            layer, _, _ = self.prepare_layer(n_sample, n_dim, 
+                n_out_dim, use_bias, cast_func=single_to_half_det, do_double=False)
             # test fp mode
             layer.set_mode(do_offset=True)
             layer.cuda()
@@ -165,7 +170,7 @@ class TestBitCenterLayer(HalpTest):
                 torch.sum(output).backward()
             if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
                 self.check_layer_param_and_cache(layer)
-        print("Bit centering linear layer test passed!")
+        print(self.__class__.__name__ + " layer test passed!")
 
 
 # if __name__ == "__main__":
