@@ -20,14 +20,20 @@ class TestBitCenterLayer(HalpTest):
     Test the functionality of bit centering linear layers
     the helper functions implemented here should directy serve for linear style
     layers such as linear layer conv layer and etc.
+    This template class can benefits parametric layers with one weight param
+    and one bias param. E.g. convolutional layers, linear layers
     '''
     def prepare_layer(self, minibatch_size, dim_in, dim_out, bias):
         """
-        this function should generate the layer to be tested and the fp lp input
+        this function should generate the layer to be tested and the fp lp input.
+        Need to specify one parameter in this function for different layers.
+        This parameter is self.target_dtype: use None for layers not needing
+        target for forward; use torch.float for regression style problems;
+        use torch.long for regression style problems
         """
         pass
 
-    def get_analytical_grad(self, layer, input_fp, input_delta):
+    def get_analytical_grad(self, layer, input_fp, input_delta, target=None):
         layer.set_mode(do_offset=True)
         grad_list = []
         output_fp = layer(input_fp)
@@ -52,7 +58,7 @@ class TestBitCenterLayer(HalpTest):
             grad_list.append(bias_grad)
         return output_lp + output_fp, grad_list
 
-    def get_numerical_grad(self, layer, input_fp, input_delta, perturb_eps):
+    def get_numerical_grad(self, layer, input_fp, input_delta, perturb_eps, target=None):
         # get numerical finite difference
         layer.set_mode(do_offset=True)
         def get_loss(x):
@@ -86,19 +92,32 @@ class TestBitCenterLayer(HalpTest):
         minibatch_size = 35
         dim_in = 24
         dim_out = 17
+        # minibatch_size = 2
+        # dim_in = 3
+        # dim_out = 1
         perturb_eps = 1e-6
         rtol_num_analytical_grad = 5e-4
         np.random.seed(0)
         torch.manual_seed(0)
         torch.cuda.manual_seed_all(0)
         for bias in [True, False]:
-            for i in range(10):
+            for i in range(1):
                 layer, input_fp, input_delta = \
                     self.prepare_layer(minibatch_size, dim_in, dim_out, bias, do_double=True)
+                if self.target_dtype == torch.long:
+                    # if this layer need label input
+                    target = torch.LongTensor(minibatch_size).random_(dim_in).cuda()
+                elif self.target_dtype == torch.float:
+                    # we use double to perform numerical gradient test
+                    target = torch.randn(minibatch_size, dtype=torch.double).cuda()
+                elif self.target_dtype is None:
+                    target = None
+                else:
+                    raise Exception("target type is not supported!")
                 analytical_output, analytical_grads = \
-                    self.get_analytical_grad(layer, input_fp, input_delta)
+                    self.get_analytical_grad(layer, input_fp, input_delta, target)
                 numerical_output, numerical_grads = \
-                    self.get_numerical_grad(layer, input_fp, input_delta, perturb_eps)
+                    self.get_numerical_grad(layer, input_fp, input_delta, perturb_eps, target)
                 assert len(analytical_grads) == len(numerical_grads)
 
                 np.testing.assert_allclose(analytical_output.data.cpu().numpy().ravel(), 
@@ -117,7 +136,8 @@ class TestBitCenterLayer(HalpTest):
                   (layer.bias_delta, torch.half, True, True),
                   (layer.weight_lp, torch.half, True, False),
                   (layer.bias_lp, torch.half, True, False),
-                  (layer.input_cache, torch.half, False, False)]
+                  (layer.input_cache, torch.half, False, False),
+                  (layer.grad_output_cache, torch.half, False, False)]
         self.CheckLayerTensorProperty(t_list)
         self.CheckLayerTensorGradProperty(t_list)
 
@@ -141,6 +161,7 @@ class TestBitCenterLayer(HalpTest):
             layer.set_mode(do_offset=True)
             layer.cuda()
             input_tensor_list = []
+            target_list = []
             if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
                 self.check_layer_param_and_cache(layer)
             for i in range(n_minibatch):
@@ -150,8 +171,21 @@ class TestBitCenterLayer(HalpTest):
                     input_cache_before = layer.input_cache[start_idx:end_idx].clone().numpy()
                     grad_input_cache_before = layer.grad_output_cache[start_idx:end_idx].clone().numpy()
                 input_tensor = torch.randn(end_idx - start_idx, n_dim, dtype=torch.float32, requires_grad=True).cuda()        
-                output = layer(input_tensor)
+                if self.target_dtype == torch.long:
+                    # if this layer need label input
+                    target = torch.LongTensor(end_idx - start_idx).random_(3).cuda()
+                    output = layer(input_tensor, target)
+                elif self.target_dtype == torch.float:
+                    # we use double to perform numerical gradient test
+                    target = torch.randn(end_idx - start_idx, dtype=torch.float32).cuda()
+                    output = layer(input_tensor, target)
+                elif self.target_dtype is None:
+                    target = None
+                    output = layer(input_tensor)
+                else:
+                    raise Exception("target type is not supported!")
                 input_tensor_list.append(input_tensor)
+                target_list.append(target)
                 torch.sum(output).backward()
                 if i != 0:
                     input_cache_after = layer.input_cache[start_idx:end_idx, :].numpy()
@@ -166,9 +200,13 @@ class TestBitCenterLayer(HalpTest):
                 self.check_layer_param_and_cache(layer)
             for i in range(n_minibatch):
                 input_lp = layer.input_cache[layer.cache_iter:(layer.cache_iter + input_tensor_list[i].size(0))].cuda()
-                output = layer(cast_func(input_tensor_list[i]))
+                target = target_list[i]
+                if target is None:
+                    output = layer(cast_func(input_tensor_list[i]))
+                else:
+                    output = layer(cast_func(input_tensor_list[i]), target)
                 torch.sum(output).backward()
             if (cast_func == single_to_half_det) or (cast_func == single_to_half_stoc): 
                 self.check_layer_param_and_cache(layer)
-        print(self.__class__.__name__ + " layer test passed!")
+        logger.info(self.__class__.__name__ + " layer test passed!")
 

@@ -52,7 +52,12 @@ class BitCenterLayer(nn.Module):
     def setup_cache(self, input):
         # the cache is set up when the first minibatch forward is done.
         # here we assume the first dimension of input blob indicates the size of minibatch
-        cache_shape = list(input.size())
+        if len(list(input.size())) == 0:
+            # this is the scalar output case 
+            # loss layers need this to be consistent with the setup of bit center layers
+            cache_shape = [1, 1]
+        else:
+            cache_shape = list(input.size())
         cache_shape[0] = self.n_train_sample
         cache = self.cast_func(Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
         return cache
