@@ -137,8 +137,9 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
             X, Y = X.cuda(), Y.cuda()
         if dtype == "lp":
             X = optimizer.cast_func(X)
-        elif dtype == "bc":
-            X = optimizer.cast_func(X).zero_()
+        # dc type do prediction in fp mode
+        # elif dtype == "bc":
+        #     X = optimizer.cast_func(X).zero_()
         pred, output = model.predict(X)
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
@@ -214,6 +215,7 @@ def train_bit_center_optimizer(model,
     total_iter = 0
 
     # TODO make sure it works properly if the T is not exactly x epochs
+    # currently we can not get around of it.
 
     for epoch_id in range(n_epochs):
         model.train()
@@ -250,8 +252,9 @@ def train_bit_center_optimizer(model,
             # print(train_loss)
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
-        optimizer.on_start_lp_steps(model)
+        optimizer.on_start_fp_steps(model)
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype=dtype))
+        optimizer.on_end_fp_steps(model)
     return train_loss_list, eval_metric_list
 
 

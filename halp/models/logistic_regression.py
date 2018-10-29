@@ -48,7 +48,7 @@ class LogisticRegression(torch.nn.Module):
 
   def predict(self, x):
     output = self.linear(x)
-    assert self.linear.do_offset == False
+    assert self.linear.do_offset == True
     pred = output.data.cpu().numpy().argmax(axis=1)
     return pred, output
 
