@@ -17,7 +17,7 @@ class BitCenterOptim(SGD):
     The base class for bit center optimizer: bit center SGD, bit center SVRG
     """
     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128):
+        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128, T=1):
         """
         The base class for bit centering style optimizers
         The bit centering optimizer can be used with calling step_fp for compute offset
@@ -41,6 +41,7 @@ class BitCenterOptim(SGD):
         self.step_iter = 0    # this is a iter for step_lp function
         self.cache_iter = 0   # this is a iter for updating the gradient cache
         self.setup_grad_cache()
+        self.T = T
 
     def setup_single_grad_cache(self):
         # we assume the size of the first dimension is the minibatch size
@@ -177,10 +178,10 @@ class BitCenterSGD(BitCenterOptim):
     Implementation of bit centering SGD
     """
     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128):
+        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128, T=1):
         super(BitCenterSGD, self).__init__(params, params_name, lr, 
             weight_decay, n_train_sample, cast_func, 
-            minibatch_size=minibatch_size)
+            minibatch_size=minibatch_size, T=T)
 
     def setup_single_grad_cache(self, grad_shape):
         cache_shape = [self.n_minibatch_per_epoch] + grad_shape

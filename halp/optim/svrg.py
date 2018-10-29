@@ -64,6 +64,7 @@ class SVRG(torch.optim.SGD):
         for idx, p in enumerate(self._params):
             if ws is not None: p.data = ws[idx]
             if gs is not None and p.grad is not None: p.grad.data = gs[idx]
+            # if (p.grad is not None):
             if (gs is not None) and (p.grad is not None):
                 assert (p.grad.data.data_ptr() == gs[idx].data_ptr())
 
