@@ -6,6 +6,7 @@ import torch.utils.data
 from torch.optim import SGD
 from halp.optim.bit_center_sgd import BitCenterSGD
 from halp.optim.bit_center_svrg import BitCenterSVRG
+from halp.optim.svrg import SVRG
 from halp.models.logistic_regression import LogisticRegression
 from halp.utils.mnist_data_utils import load_mnist
 from halp.utils import utils
@@ -89,15 +90,15 @@ logger.info("Params list: ")
 for x in params_name:
     logger.info(x)
 
-if args.solver == "sgd" or "lp-sgd":
+if (args.solver == "sgd") or (args.solver == "lp-sgd"):
     optimizer = SGD(params=params, lr=args.alpha, weight_decay=args.reg)
 elif args.solver == "svrg" or "lp-svrg":
     optimizer = SVRG(
         params=params,
         lr=args.alpha,
         weight_decay=args.reg,
-        T=args.T,
-        data_loader=train_data_loader)
+        T=int(args.T * X_train.size(0)),
+        data_loader=train_loader)
 elif args.solver == "bc-sgd":
     optimizer = BitCenterSGD(
         params=params,
@@ -152,15 +153,25 @@ def train_non_bit_center_optimizer(model,
         model.train()
         for i, (X, Y) in enumerate(train_loader):
             if use_cuda:
-                X, Y = X.cuda(), Y.cuda()
+                X, Y = X.cuda(), Y.cuda()    
             optimizer.zero_grad()
             train_loss = model(X, Y)
             train_loss.backward()
-            optimizer.step()
+            if optimizer.__class__.__name__ == "SVRG":
+                def svrg_closure(data=X, target=Y):
+                    if use_cuda:
+                        data = data.cuda()
+                        target = target.cuda()
+                    loss = model(data, target)
+                    loss.backward()
+                    return loss
+                optimizer.step(svrg_closure)
+            else:
+                optimizer.step()
             train_loss_list.append(train_loss.item())
             # print(train_loss)
         logger.info("Finished train epoch " + str(epoch_id))
-        mode.eval()
+        model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda))
     return train_loss_list, eval_metric_list
 
@@ -171,6 +182,8 @@ def train_bit_center_optimizer(model, optimizer, train_loader, val_loader,
 
 
 # run training procedure
+logger.info("optimizer " + optimizer.__class__.__name__)
+logger.info("model " + model.linear.__class__.__name__)
 if (args.solver == "bc-sgd") or (args.solver == "bc-svrg"):
     train_loss = train_bit_center_optimizer(
         model=model,
