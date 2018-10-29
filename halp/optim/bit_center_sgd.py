@@ -9,7 +9,7 @@ from halp.utils.utils import get_recur_attr
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-logger = logging.getLogger('bit center sgd')
+logger = logging.getLogger('')
 
 
 class BitCenterOptim(SGD):
@@ -68,10 +68,13 @@ class BitCenterOptim(SGD):
         # TODO: need to sanity check when whole dataset size is not divided by the minibatch
         # to make sure the data idx in each minibatch is the same between the fp pass and lp pass
         for param_group in self.param_groups:
+            weight_decay = param_group["weight_decay"]
             for p, p_name in zip(param_group["params"], param_group["params_name"]):
                 cache = self.grad_cache[p_name]
                 if cache is None:
                     continue
+                if weight_decay != 0.0:
+                    p.grad.data.add_(weight_decay, p.data)
                 self.update_single_grad_cache(p.grad * param_group["lr"], cache)
 
     def get_single_grad_offset(self, cache, cache_iter=0):
@@ -81,6 +84,7 @@ class BitCenterOptim(SGD):
     def step_lp(self):
         for param_group in self.param_groups:
             lr = torch.Tensor(np.array(param_group["lr"])).half()
+            weight_decay = param_group["weight_decay"]
             for p, p_name in zip(param_group["params"], param_group["params_name"]):
                 if not p_name.endswith("_delta"):
                     continue
@@ -88,6 +92,8 @@ class BitCenterOptim(SGD):
                 grad_offset = self.get_single_grad_offset(cache)
                 if p.is_cuda:
                     lr = lr.cuda()
+                if weight_decay != 0.0:
+                    p.grad.data.add_(weight_decay, p.data)
                 p.data.add_(-lr, p.grad.data)
                 if not grad_offset.is_cuda:   
                    p.data.sub_(grad_offset.cuda())

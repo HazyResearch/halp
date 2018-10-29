@@ -32,7 +32,8 @@ class BitCenterCrossEntropyLPFunction(Function):
         sample_idx = torch.LongTensor(np.arange(input_lp.size(0)))
         minibatch_size = input_delta.size(0)
         grad_input_lp = None
-        grad_input_delta = torch.zeros_like(input_delta, dtype=input_delta.dtype)
+        grad_input_delta = torch.zeros_like(
+            input_delta, dtype=input_delta.dtype)
         grad_input_delta[sample_idx, target] = 1.0
         grad_input_delta.add_(-prob)
         grad_input_delta.div_(-minibatch_size)
@@ -66,18 +67,20 @@ class BitCenterCrossEntropyFPFunction(Function):
         grad_target = None
         return grad_input_fp, grad_target
 
+
 bit_center_cross_entropy_lp = BitCenterCrossEntropyLPFunction.apply
 bit_center_cross_entropy_fp = BitCenterCrossEntropyFPFunction.apply
 
 
-class BitCenterCrossEntropyLayer(BitCenterLayer):
+class BitCenterCrossEntropy(BitCenterLayer):
     def __init__(self, cast_func=void_cast_func, n_train_sample=1):
-        BitCenterLayer.__init__(self, 
-                                fp_functional=bit_center_cross_entropy_fp,
-                                lp_functional=bit_center_cross_entropy_lp, 
-                                bias=False,
-                                cast_func=cast_func,
-                                n_train_sample=n_train_sample)
+        BitCenterLayer.__init__(
+            self,
+            fp_functional=bit_center_cross_entropy_fp,
+            lp_functional=bit_center_cross_entropy_lp,
+            bias=False,
+            cast_func=cast_func,
+            n_train_sample=n_train_sample)
         self.setup_bit_center_vars()
         self.cuda()
         self.reset_parameters_bit_center()
@@ -97,15 +100,18 @@ class BitCenterCrossEntropyLayer(BitCenterLayer):
         if self.do_offset:
             # note here grad_output_lp is actually the grad_input offset.
             # This is because we want to utilize the existing infra in bitCenterLayer
-            self.grad_output_cache[self.grad_cache_iter:min(self.grad_cache_iter + input[0].size(0), 
-                self.n_train_sample)].data.copy_(self.cast_func(input[0].cpu()))
-            self.grad_cache_iter = (self.grad_cache_iter + input[0].size(0)) % self.n_train_sample
+            self.grad_output_cache[self.grad_cache_iter:min(
+                self.grad_cache_iter +
+                input[0].size(0), self.n_train_sample)].data.copy_(
+                    self.cast_func(input[0].cpu()))
+            self.grad_cache_iter = (
+                self.grad_cache_iter + input[0].size(0)) % self.n_train_sample
             # we use the following variable only for test purpose, we want to be able to access
             # the gradeint value wrt input in the outside world. For lp mode, it is grad_input_delta
             # for fp mode, it is grad_input
             # TODO: update if pytorch stable version fixes this:
-            # The following branch is due to the layer specific behavior of 
-            # input argument to the backward hook. 
+            # The following branch is due to the layer specific behavior of
+            # input argument to the backward hook.
             # Here we hard code the order of tensor in the input list (this is layer specific)
             self.input_grad_for_test = input[0].clone()
         else:
@@ -125,17 +131,19 @@ class BitCenterCrossEntropyLayer(BitCenterLayer):
 
     def forward_lp(self, input, target):
         # Need to test do_offset mode whether gradient is updated properly
-        input_lp = self.input_cache[self.cache_iter:(self.cache_iter + input.size(0))].cuda()
+        input_lp = self.input_cache[self.cache_iter:(
+            self.cache_iter + input.size(0))].cuda()
         # note here grad_output_lp is actually the grad_input offset.
         # This is because we want to utilize the existing infra in bitCenterLayer
         grad_output_lp = \
             self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         output = self.lp_func(input_delta, input_lp, target, grad_output_lp)
-        self.cache_iter = (self.cache_iter + input.size(0)) % self.n_train_sample
-        self.grad_cache_iter = (self.grad_cache_iter + input.size(0)) % self.n_train_sample
+        self.cache_iter = (
+            self.cache_iter + input.size(0)) % self.n_train_sample
+        self.grad_cache_iter = (
+            self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output
-
 
     def forward(self, input, target):
         # Need to test do_offset mode whether gradient is updated properly

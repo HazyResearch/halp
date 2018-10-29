@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 def single_to_half_det(tensor):
     return tensor.half()
@@ -18,3 +19,9 @@ def get_recur_attr(obj, attr_str_list):
 
 def void_func():
 	pass
+
+
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)

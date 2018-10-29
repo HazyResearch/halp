@@ -13,8 +13,12 @@ logger = logging.getLogger()
 
 
 class BitCenterLayer(nn.Module):
-    def __init__(self, fp_functional=void_func, lp_functional=void_func, bias=True, 
-        cast_func=void_cast_func, n_train_sample=1):
+    def __init__(self,
+                 fp_functional=void_func,
+                 lp_functional=void_func,
+                 bias=True,
+                 cast_func=void_cast_func,
+                 n_train_sample=1):
         nn.Module.__init__(self)
         self.cast_func = cast_func
         # register the fp and lp forward function
@@ -30,12 +34,16 @@ class BitCenterLayer(nn.Module):
         self.set_mode(do_offset=True)
 
     def setup_bit_center_vars(self):
-        self.weight_delta = Parameter(self.cast_func(self.weight.data), requires_grad=True)
-        self.weight_lp = Parameter(self.cast_func(self.weight.data), requires_grad=False)
+        self.weight_delta = Parameter(
+            self.cast_func(self.weight.data), requires_grad=True)
+        self.weight_lp = Parameter(
+            self.cast_func(self.weight.data), requires_grad=False)
         self.set_mode(do_offset=True)
         if self.bias is not None:
-            self.bias_delta = Parameter(self.cast_func(self.bias), requires_grad=True)
-            self.bias_lp = Parameter(self.cast_func(self.bias.data), requires_grad=False)
+            self.bias_delta = Parameter(
+                self.cast_func(self.bias), requires_grad=True)
+            self.bias_lp = Parameter(
+                self.cast_func(self.bias.data), requires_grad=False)
         else:
             self.register_parameter('bias_delta', None)
             self.register_parameter('bias_lp', None)
@@ -53,13 +61,14 @@ class BitCenterLayer(nn.Module):
         # the cache is set up when the first minibatch forward is done.
         # here we assume the first dimension of input blob indicates the size of minibatch
         if len(list(input.size())) == 0:
-            # this is the scalar output case 
+            # this is the scalar output case
             # loss layers need this to be consistent with the setup of bit center layers
             cache_shape = [1, 1]
         else:
             cache_shape = list(input.size())
         cache_shape[0] = self.n_train_sample
-        cache = self.cast_func(Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
+        cache = self.cast_func(
+            Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
         return cache
 
     def update_grad_output_cache(self, self1, input, output):
@@ -67,9 +76,12 @@ class BitCenterLayer(nn.Module):
 
     def update_input_cache(self, input):
         if self.do_offset:
-            self.input_cache[self.cache_iter:min(self.cache_iter + input.size()[0], 
-                self.n_train_sample)].data.copy_(self.cast_func(input.cpu()))
-            self.cache_iter = (self.cache_iter + input.size(0)) % self.n_train_sample
+            self.input_cache[self.cache_iter:min(
+                self.cache_iter +
+                input.size()[0], self.n_train_sample)].data.copy_(
+                    self.cast_func(input.cpu()))
+            self.cache_iter = (
+                self.cache_iter + input.size(0)) % self.n_train_sample
 
     def forward_fp(self, input):
         if self.input_cache is None:
@@ -84,7 +96,8 @@ class BitCenterLayer(nn.Module):
 
     def forward_lp(self, input):
         # Need to test do_offset mode whether gradient is updated properly
-        input_lp = self.input_cache[self.cache_iter:(self.cache_iter + input.size(0))].cuda()
+        input_lp = self.input_cache[self.cache_iter:(
+            self.cache_iter + input.size(0))].cuda()
         grad_output_lp = \
             self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
@@ -93,9 +106,11 @@ class BitCenterLayer(nn.Module):
         bias_lp = self.bias_lp
         bias_delta = self.bias_delta
         output = self.lp_func(input_delta, input_lp, grad_output_lp,
-            weight_delta, weight_lp, bias_delta, bias_lp)
-        self.cache_iter = (self.cache_iter + input.size(0)) % self.n_train_sample
-        self.grad_cache_iter = (self.grad_cache_iter + input.size(0)) % self.n_train_sample
+                              weight_delta, weight_lp, bias_delta, bias_lp)
+        self.cache_iter = (
+            self.cache_iter + input.size(0)) % self.n_train_sample
+        self.grad_cache_iter = (
+            self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output
 
     def forward(self, input):
@@ -104,4 +119,3 @@ class BitCenterLayer(nn.Module):
             return self.forward_fp(input)
         else:
             return self.forward_lp(input)
-
