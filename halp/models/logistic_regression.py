@@ -31,8 +31,8 @@ class LogisticRegression(torch.nn.Module):
         self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
         self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
     elif dtype == "lp":
-        self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
-        self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
+        # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
+        # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
         self.linear.half()
         self.criterion.half()
     else:
@@ -48,7 +48,8 @@ class LogisticRegression(torch.nn.Module):
 
   def predict(self, x):
     output = self.linear(x)
-    assert self.linear.do_offset == True
+    if isinstance(self.linear, BitCenterLinear):
+        assert self.linear.do_offset == True
     pred = output.data.cpu().numpy().argmax(axis=1)
     return pred, output
 

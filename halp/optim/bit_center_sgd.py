@@ -11,6 +11,7 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
+# TODO the weight decay needs updates !!!!!!
 
 class BitCenterOptim(SGD):
     """
@@ -94,7 +95,17 @@ class BitCenterOptim(SGD):
                 if p.is_cuda:
                     lr = lr.cuda()
                 if weight_decay != 0.0:
+                    # add weight decay from the delta variable
                     p.grad.data.add_(weight_decay, p.data)
+                    # add the weight decay from the weight_lp style variable
+                    # (the one casted from the full precision weight)
+                    lp_var_found=False
+                    for p_lp, p_lp_name in zip(param_group["params"], param_group["params_name"]):
+                        if p_name.replace("_delta", "_lp") == p_lp_name:
+                            lp_var_found = True
+                            p.grad.data.add_(weight_decay, p_lp.data)
+                    if lp_var_found == False:
+                        raise Exception("The lp var is not found for weight decay")
                 p.data.add_(-lr, p.grad.data)
                 if not grad_offset.is_cuda:   
                    p.data.sub_(grad_offset.cuda())

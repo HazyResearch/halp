@@ -2,6 +2,7 @@ import copy
 import argparse
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.utils.data
 from torch.optim import SGD
 from halp.optim.bit_center_sgd import BitCenterSGD
@@ -15,6 +16,12 @@ import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
+
+
+import torchvision
+import torchvision.transforms as transforms
+from torch.autograd import Variable
+
 
 
 parser = argparse.ArgumentParser()
@@ -38,7 +45,7 @@ parser.add_argument("-s", "--seed", action="store", default=42, type=int,
                     help="Random seed.")
 parser.add_argument("-c", "--n-classes", action="store", default=10, type=int,
                     help="Number of classes for classification.")
-parser.add_argument("--solver", action="store", default="all", type=str,
+parser.add_argument("--solver", action="store", default="sgd", type=str,
                     choices=["sgd", "svrg", 
                              "lp-sgd", "lp-svrg", 
                              "bc-sgd", "bc-svrg"],
@@ -50,6 +57,7 @@ parser.add_argument("--cuda", action="store_true",
 args = parser.parse_args()
 
 utils.set_seed(args.seed)
+
 X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
 X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
 Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
@@ -89,8 +97,8 @@ params_name = [x for x, y in model.named_parameters()]
 params = [y for x, y in model.named_parameters()]
 
 logger.info("Params list: ")
-for x in params_name:
-    logger.info(x)
+for name, p in zip(params_name, params):
+    logger.info(name + " " + str(p.dtype))
 
 if (args.solver == "sgd") or (args.solver == "lp-sgd"):
     optimizer = SGD(params=params, lr=args.alpha, weight_decay=args.reg)
@@ -137,9 +145,8 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
             X, Y = X.cuda(), Y.cuda()
         if dtype == "lp":
             X = optimizer.cast_func(X)
-        # dc type do prediction in fp mode
-        # elif dtype == "bc":
-        #     X = optimizer.cast_func(X).zero_()
+        if len(list(X.size())) != 2:
+            X = X.view(X.size(0), -1)
         pred, output = model.predict(X)
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
@@ -172,6 +179,8 @@ def train_non_bit_center_optimizer(model,
                 X = optimizer.cast_func(X)
             if dtype == "bc":
                 raise Exception("This function can only run non-bc optimizers")
+            if len(list(X.size())) != 2:
+                X = X.view(X.size(0), -1)
             optimizer.zero_grad()
             # print("check data type inside ", X.dtype, [x.shape for x in model.parameters()])
             train_loss = model(X, Y)
@@ -186,6 +195,8 @@ def train_non_bit_center_optimizer(model,
                         data = optimizer.cast_func(data)
                     if dtype == "bc":
                         raise Exception("This function can only run non-bc optimizers")
+                    if len(list(data.size())) != 2:
+                        data = data.view(data.size(0), -1)
                     loss = model(data, target)
                     loss.backward()
                     return loss
