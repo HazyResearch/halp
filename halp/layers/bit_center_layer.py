@@ -12,14 +12,25 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-class BitCenterLayer(nn.Module):
+class BitCenterModule(nn.Module):
+    def __init__(self):
+        nn.Module.__init__(self)
+
+    def set_mode(self, do_offset, cache_iter=0):
+        self.do_offset = do_offset
+        self.cache_iter = cache_iter
+        for child in self.children():
+            child.set_mode(do_offset, cache_iter)
+
+
+class BitCenterLayer(BitCenterModule):
     def __init__(self,
                  fp_functional=void_func,
                  lp_functional=void_func,
                  bias=True,
                  cast_func=void_cast_func,
                  n_train_sample=1):
-        nn.Module.__init__(self)
+        BitCenterModule.__init__(self)
         self.cast_func = cast_func
         # register the fp and lp forward function
         self.fp_func = fp_functional
@@ -53,9 +64,9 @@ class BitCenterLayer(nn.Module):
         if self.bias is not None:
             init.zeros_(self.bias_delta)
 
-    def set_mode(self, do_offset, cache_iter=0):
-        self.do_offset = do_offset
-        self.cache_iter = cache_iter
+    # def set_mode(self, do_offset, cache_iter=0):
+    #     self.do_offset = do_offset
+    #     self.cache_iter = cache_iter
 
     def setup_cache(self, input):
         # the cache is set up when the first minibatch forward is done.
@@ -87,6 +98,9 @@ class BitCenterLayer(nn.Module):
         if self.input_cache is None:
             self.input_cache = self.setup_cache(input)
             self.cache_iter = 0
+
+        # print("fp forward input ", torch.sum(input**2))
+
         output = self.fp_func(input, self.weight, self.bias)
         if self.grad_output_cache is None:
             self.grad_output_cache = self.setup_cache(output)
@@ -105,6 +119,10 @@ class BitCenterLayer(nn.Module):
         weight_delta = self.weight_delta
         bias_lp = self.bias_lp
         bias_delta = self.bias_delta
+
+        # print("lp forward input ", torch.sum((input_delta + input_lp)**2))
+
+
         output = self.lp_func(input_delta, input_lp, grad_output_lp,
                               weight_delta, weight_lp, bias_delta, bias_lp)
         self.cache_iter = (

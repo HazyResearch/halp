@@ -18,12 +18,6 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
 
-import torchvision
-import torchvision.transforms as transforms
-from torch.autograd import Variable
-
-
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-T", action="store", default=1, type=int,
                     help="T parameter for SVRG type algorithms.")
@@ -54,11 +48,25 @@ parser.add_argument("--reg", type=float, default=0.0,
                     help="L2 regularizer strength")
 parser.add_argument("--cuda", action="store_true", 
                     help="currently pytorch only support store true")
+parser.add_argument("--debug-test", action="store_true",
+                    help="switch to use small toy example for debugging")
 args = parser.parse_args()
 
 utils.set_seed(args.seed)
 
 X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
+
+if args.debug_test:
+    debug_data_size = 3
+    X_train = X_train[0:debug_data_size]
+    X_val = X_val[0:debug_data_size]
+    Y_train = Y_train[0:debug_data_size]
+    Y_val = Y_val[0:debug_data_size]
+    args.cast_func = void_cast_func
+    args.T = X_train.shape[0]    
+else:
+    args.cast_func = single_to_half_det
+
 X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
 Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
 
@@ -78,8 +86,6 @@ elif args.solver.startswith("lp-"):
     args.dtype = "lp"
 else:
     args.dtype = "fp"
-
-args.cast_func = single_to_half_det
 
 # note reg_lambda is dummy here, the regularizer is handled by the optimizer
 model = LogisticRegression(
@@ -170,8 +176,15 @@ def train_non_bit_center_optimizer(model,
                                    dtype='fp'):
     train_loss_list = []
     eval_metric_list = []
+
+    # print("initialization ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2))
+
+
     for epoch_id in range(n_epochs):
         model.train()
+
+        # print("before any ", torch.sum(model.linear.weight**2).item(), torch.sum(model.linear.bias**2).item())
+
         for i, (X, Y) in enumerate(train_loader):
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
@@ -203,9 +216,10 @@ def train_non_bit_center_optimizer(model,
 
                 optimizer.step(svrg_closure)
             else:
+                # pass
                 optimizer.step()
             train_loss_list.append(train_loss.item())
-            # print(train_loss)
+            # print(epoch_id, train_loss.item(), " sgd grad ", torch.sum(model.linear.weight.grad**2).item() *0.003**2, torch.sum(model.linear.bias.grad**2).item()*0.003**2, torch.sum(model.linear.weight**2).item(), torch.sum(model.linear.bias**2).item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
@@ -227,6 +241,10 @@ def train_bit_center_optimizer(model,
 
     # TODO make sure it works properly if the T is not exactly x epochs
     # currently we can not get around of it.
+    # print("initialization ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2), 
+    #     torch.sum(model.linear.weight_delta**2), torch.sum(model.linear.bias_delta**2),
+    #     torch.sum(model.linear.weight_lp**2), torch.sum(model.linear.bias_lp**2))
+
 
     for epoch_id in range(n_epochs):
         model.train()
@@ -237,15 +255,24 @@ def train_bit_center_optimizer(model,
                 # print("test total iter ", total_iter, T)
                 optimizer.on_start_fp_steps(model)
                 for j, (X_fp, Y_fp) in enumerate(train_loader):
+                    optimizer.zero_grad()
                     if use_cuda:
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
+                    # print("bc fp step ", epoch_id, j, loss_fp.item(), torch.sum(model.linear.weight.grad**2)*0.003**2, torch.sum(model.linear.bias.grad**2)*0.003**2)
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
+
+                # print("after first fp epoch ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2), 
+                #         torch.sum(model.linear.weight_delta**2), torch.sum(model.linear.bias_delta**2))
+
+            # print(" before bc lp step ", epoch_id, j, loss_fp.item(), torch.sum( (model.linear.weight_lp + model.linear.weight_delta)**2).item(), torch.sum( (model.linear.bias_lp + model.linear.bias_delta)**2).item(), torch.sum(model.linear.bias_delta**2).item(), torch.sum(model.linear.bias_lp**2).item())
+
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
+            # note here X is the input delta. It is suppose to be zero.
             X = optimizer.cast_func(X).zero_()
             if dtype != "bc":
                 raise Exception(
@@ -254,13 +281,18 @@ def train_bit_center_optimizer(model,
             optimizer.zero_grad()
             train_loss = model(X, Y)
             train_loss.backward()
-            optimizer.step()
+            optimizer.step_lp()
             train_loss_list.append(train_loss.item())
+
+
+            # print("bc lp step ", epoch_id, j, loss_fp.item(), torch.sum( (model.linear.weight_lp + model.linear.weight_delta)**2).item(), torch.sum( (model.linear.bias_lp + model.linear.bias_delta)**2).item())
+
             if total_iter % T == T - 1:
-                print("end lp ", i)
+                # print("end lp ", i)
+                # print("before update ", torch.sum(layer.))
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
-            # print(train_loss)
+            # print(epoch_id, i, train_loss.item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)

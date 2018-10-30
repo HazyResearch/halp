@@ -85,8 +85,8 @@ class BitCenterOptim(SGD):
 
     def step_lp(self):
         for param_group in self.param_groups:
-            lr = torch.Tensor(np.array(param_group["lr"])).half()
-            weight_decay = param_group["weight_decay"]
+            lr = self.cast_func(torch.Tensor(np.array(param_group["lr"])))
+            weight_decay = self.cast_func(torch.Tensor(np.array(param_group["weight_decay"])))
             for p, p_name in zip(param_group["params"], param_group["params_name"]):
                 if not p_name.endswith("_delta"):
                     continue
@@ -94,23 +94,32 @@ class BitCenterOptim(SGD):
                 grad_offset = self.get_single_grad_offset(cache)
                 if p.is_cuda:
                     lr = lr.cuda()
+                    weight_decay = weight_decay.cuda()
+                else:
+                    lr = lr.cpu()
+                    weight_decay = weight_decay.cpu()
                 if weight_decay != 0.0:
-                    # add weight decay from the delta variable
-                    p.grad.data.add_(weight_decay, p.data)
                     # add the weight decay from the weight_lp style variable
                     # (the one casted from the full precision weight)
                     lp_var_found=False
                     for p_lp, p_lp_name in zip(param_group["params"], param_group["params_name"]):
                         if p_name.replace("_delta", "_lp") == p_lp_name:
                             lp_var_found = True
-                            p.grad.data.add_(weight_decay, p_lp.data)
+                            p.grad.data.add_(weight_decay, p_lp.data + p.data)
+                            # add weight decay from the delta variable
                     if lp_var_found == False:
                         raise Exception("The lp var is not found for weight decay")
                 p.data.add_(-lr, p.grad.data)
-                if not grad_offset.is_cuda:   
+                if p.is_cuda:   
                    p.data.sub_(grad_offset.cuda())
                 else:
                    p.data.sub_(grad_offset)
+
+                # print("bc lp grad", lr, torch.sum(grad_offset**2).item(),
+                #     torch.sum((grad_offset.cuda() + lr * p.grad.data)**2).item())
+
+                # print("bc lp grad ", torch.sum((grad_offset.cuda() + lr * p.grad.data)**2).item())
+
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
     def step_fp(self):
@@ -121,12 +130,12 @@ class BitCenterOptim(SGD):
         self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
 
-    def set_model_mode(self, model, do_offset=False):
-        for param_group in self.param_groups:
-            for p_name in param_group["params_name"]:
-                if p_name.endswith("_delta"):
-                    layer_name_seq = p_name.split(".")[0:-1]
-                    get_recur_attr(model, layer_name_seq).set_mode(do_offset=do_offset)
+    # def set_model_mode(self, model, do_offset=False):
+    #     for param_group in self.param_groups:
+    #         for p_name in param_group["params_name"]:
+    #             if p_name.endswith("_delta"):
+    #                 layer_name_seq = p_name.split(".")[0:-1]
+    #                 get_recur_attr(model, layer_name_seq).set_mode(do_offset=do_offset)
 
     def update_offset_vars(self):
         for param_group in self.param_groups:
@@ -166,18 +175,26 @@ class BitCenterOptim(SGD):
     # statues
     def on_start_lp_steps(self, model):
         self.reset_delta_vars()
-        self.set_model_mode(model, do_offset=False)
+        model.set_mode(do_offset=False)
+        # self.set_model_mode(model, do_offset=False)
 
     def on_end_lp_steps(self, model):
         self.update_offset_vars()
-        self.set_model_mode(model, do_offset=True)
+        model.set_mode(do_offset=True)
+        # self.set_model_mode(model, do_offset=True)
 
     def on_start_fp_steps(self, model):
         self.clear_cache()
-        self.set_model_mode(model, do_offset=True)
+        model.set_mode(do_offset=True)
+        # self.set_model_mode(model, do_offset=True)
         
     def on_end_fp_steps(self, model):
-        self.set_model_mode(model, do_offset=True)
+        # pass
+        model.set_mode(do_offset=True)
+        # self.set_model_mode(model, do_offset=True)
+
+    def step(self):
+        raise Exception("This function is not suppose to be called. Please use step_lp or step_fp")
 
 
     # def step(self):

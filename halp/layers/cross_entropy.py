@@ -37,7 +37,16 @@ class BitCenterCrossEntropyLPFunction(Function):
         grad_input_delta[sample_idx, target] = 1.0
         grad_input_delta.add_(-prob)
         grad_input_delta.div_(-minibatch_size)
+
+
+        # print("lp ce input grad full ", torch.sum(grad_input_delta**2).item())
+        # print("lp ce input grad offset ", torch.sum(grad_offset**2).item())
+
+
         grad_input_delta.add_(-grad_offset)
+
+        # print("lp ce input grad delta ", torch.sum(grad_input_delta**2).item())
+
         grad_target = None
         grad_grad_offset = None
         return grad_input_delta, grad_input_lp, grad_target, grad_grad_offset
@@ -64,6 +73,12 @@ class BitCenterCrossEntropyFPFunction(Function):
         grad_input_fp[sample_idx, target] = 1.0
         grad_input_fp.add_(-prob)
         grad_input_fp.div_(-minibatch_size)
+
+
+        # print("fp ce input grad full ", torch.sum(grad_input_fp**2).item())
+
+
+
         grad_target = None
         return grad_input_fp, grad_target
 
@@ -121,6 +136,10 @@ class BitCenterCrossEntropy(BitCenterLayer):
         if self.input_cache is None:
             self.input_cache = self.setup_cache(input)
             self.cache_iter = 0
+
+        # print("ce fp forward input ", torch.sum(input**2).item())
+
+
         output = self.fp_func(input, target)
         if self.grad_output_cache is None:
             # in the cross entropy layer we need to cache the input gradient
@@ -138,6 +157,10 @@ class BitCenterCrossEntropy(BitCenterLayer):
         grad_output_lp = \
             self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
+
+        # print("ce lp forward input ", torch.sum((input_delta + input_lp)**2).item())
+
+
         output = self.lp_func(input_delta, input_lp, target, grad_output_lp)
         self.cache_iter = (
             self.cache_iter + input.size(0)) % self.n_train_sample
@@ -147,6 +170,7 @@ class BitCenterCrossEntropy(BitCenterLayer):
 
     def forward(self, input, target):
         # Need to test do_offset mode whether gradient is updated properly
+        # print("ce forward mode ", self.do_offset)
         if self.do_offset:
             return self.forward_fp(input, target)
         else:
