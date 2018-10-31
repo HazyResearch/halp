@@ -177,14 +177,9 @@ def train_non_bit_center_optimizer(model,
     train_loss_list = []
     eval_metric_list = []
 
-    # print("initialization ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2))
-
     logging.info("using training function for non bit center optimizers")
     for epoch_id in range(n_epochs):
         model.train()
-
-        # print("before any ", torch.sum(model.linear.weight**2).item(), torch.sum(model.linear.bias**2).item())
-
         for i, (X, Y) in enumerate(train_loader):
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
@@ -219,7 +214,6 @@ def train_non_bit_center_optimizer(model,
                 optimizer.step()
             train_loss_list.append(train_loss.item())
             print(epoch_id, train_loss.item())
-            # print(epoch_id, train_loss.item(), " sgd grad ", torch.sum(model.linear.weight.grad**2).item() *0.003**2, torch.sum(model.linear.bias.grad**2).item()*0.003**2, torch.sum(model.linear.weight**2).item(), torch.sum(model.linear.bias**2).item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
@@ -239,12 +233,6 @@ def train_bit_center_optimizer(model,
     T = optimizer.T
     total_iter = 0
 
-    # TODO make sure it works properly if the T is not exactly x epochs
-    # currently we can not get around of it.
-    # print("initialization ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2), 
-    #     torch.sum(model.linear.weight_delta**2), torch.sum(model.linear.bias_delta**2),
-    #     torch.sum(model.linear.weight_lp**2), torch.sum(model.linear.bias_lp**2))
-
     logging.info("using training function for bit center optimizers")
     for epoch_id in range(n_epochs):
         model.train()
@@ -261,15 +249,8 @@ def train_bit_center_optimizer(model,
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
-                    # print("bc fp step ", epoch_id, j, loss_fp.item(), torch.sum(model.linear.weight.grad**2)*0.003**2, torch.sum(model.linear.bias.grad**2)*0.003**2)
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
-
-                # print("after first fp epoch ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2), 
-                #         torch.sum(model.linear.weight_delta**2), torch.sum(model.linear.bias_delta**2))
-
-            # print(" before bc lp step ", epoch_id, j, loss_fp.item(), torch.sum( (model.linear.weight_lp + model.linear.weight_delta)**2).item(), torch.sum( (model.linear.bias_lp + model.linear.bias_delta)**2).item(), torch.sum(model.linear.bias_delta**2).item(), torch.sum(model.linear.bias_lp**2).item())
-
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
             # note here X is the input delta. It is suppose to be zero.
@@ -283,10 +264,6 @@ def train_bit_center_optimizer(model,
             train_loss.backward()
             optimizer.step_lp()
             train_loss_list.append(train_loss.item())
-
-
-            # print("bc lp step ", epoch_id, j, loss_fp.item(), torch.sum( (model.linear.weight_lp + model.linear.weight_delta)**2).item(), torch.sum( (model.linear.bias_lp + model.linear.bias_delta)**2).item())
-
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1

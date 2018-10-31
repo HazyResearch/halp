@@ -14,7 +14,7 @@
 # python mnist_log_reg.py --n-epochs=1 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --cuda --debug-test
 # python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --cuda --debug-test
 
-# # test the behavior of bc sgd, we want the following three to have the same training loss history
+# test the behavior of bc sgd, we want the following three to have the same training loss history
 # python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='sgd' --cuda --debug-test
 # python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --cuda --debug-test
 # python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --cuda --debug-test

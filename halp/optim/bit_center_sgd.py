@@ -115,28 +115,14 @@ class BitCenterOptim(SGD):
                 else:
                    move.add_(grad_offset)
                 p.data.add_(-move)
-
-                # print("bc lp grad", lr, torch.sum(grad_offset**2).item(),
-                #     torch.sum((grad_offset.cuda() + lr * p.grad.data)**2).item())
-
-                # print("bc lp grad ", torch.sum((grad_offset.cuda() + lr * p.grad.data)**2).item())
-
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
     def step_fp(self):
         # update all the blobs as usual, the uninvolved blobs has 0 gradient so effectively it is not updated
-        # TODO add sanity check and assertion to make sure the parameters comes out in the same order
         # during the entire training
         self.update_grad_cache()
         self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
-
-    # def set_model_mode(self, model, do_offset=False):
-    #     for param_group in self.param_groups:
-    #         for p_name in param_group["params_name"]:
-    #             if p_name.endswith("_delta"):
-    #                 layer_name_seq = p_name.split(".")[0:-1]
-    #                 get_recur_attr(model, layer_name_seq).set_mode(do_offset=do_offset)
 
     def update_offset_vars(self):
         for param_group in self.param_groups:
@@ -197,10 +183,6 @@ class BitCenterOptim(SGD):
     def step(self):
         raise Exception("This function is not suppose to be called. Please use step_lp or step_fp")
 
-
-    # def step(self):
-    #   # avoid exposing the complexity to the outside on the use of different function at different steps
-    #   if self.n_iter % :
 
 class BitCenterSGD(BitCenterOptim):
     """

@@ -54,10 +54,6 @@ class BitCenterLinearFunction(Function):
             grad_bias_delta = grad_output.sum(0)
         else:
             grad_bias_delta = None
-
-        # print("lp linear grad output ", torch.sum(grad_output**2).item(), 
-        #     torch.sum( (output_grad_lp + grad_output)**2).item())
-
         return grad_input_delta, grad_input_lp, grad_output_grad_lp, \
             grad_weight_delta, grad_weight_lp, grad_bias_delta, grad_bias_lp
 

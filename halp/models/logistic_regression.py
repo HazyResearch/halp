@@ -27,21 +27,15 @@ class LogisticRegression(BitCenterModule):
     if dtype == "bc":
         pass    
     elif dtype == "fp":
-        pass
-        # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
-        # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
-        # self.linear.weight.data.copy_(linear_tmp.weight)
-        # self.linear.bias.data.copy_(linear_tmp.bias)
+        # we use the copied weights to guarantee same initialization
+        # across different dtype when using the same random seed
+        linear_tmp = self.linear
+        self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
+        self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
+        self.linear.weight.data.copy_(linear_tmp.weight)
+        self.linear.bias.data.copy_(linear_tmp.bias)
     elif dtype == "lp":
-        # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
-        # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
-        # self.linear.weight.data.copy_(linear_tmp.weight)
-        # self.linear.bias.data.copy_(linear_tmp.bias)
         pass
-        # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
-        # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
-        # self.linear.half()
-        # self.criterion.half()
     else:
         raise Exception("dtype not supported")
     self.dtype = dtype
