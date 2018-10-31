@@ -178,6 +178,8 @@ def train_non_bit_center_optimizer(model,
     eval_metric_list = []
 
     logging.info("using training function for non bit center optimizers")
+    if optimizer.T is not None:
+        logging.info("optimizer T=" + str(optimizer.T))
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
@@ -233,6 +235,7 @@ def train_bit_center_optimizer(model,
     total_iter = 0
 
     logging.info("using training function for bit center optimizers")
+    logging.info("optimizer T=" + str(optimizer.T))
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
