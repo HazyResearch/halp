@@ -179,7 +179,7 @@ def train_non_bit_center_optimizer(model,
 
     # print("initialization ", torch.sum(model.linear.weight**2), torch.sum(model.linear.bias**2))
 
-
+    logging.info("using training function for non bit center optimizers")
     for epoch_id in range(n_epochs):
         model.train()
 
@@ -245,7 +245,7 @@ def train_bit_center_optimizer(model,
     #     torch.sum(model.linear.weight_delta**2), torch.sum(model.linear.bias_delta**2),
     #     torch.sum(model.linear.weight_lp**2), torch.sum(model.linear.bias_lp**2))
 
-
+    logging.info("using training function for bit center optimizers")
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):

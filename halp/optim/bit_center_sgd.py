@@ -109,11 +109,12 @@ class BitCenterOptim(SGD):
                             # add weight decay from the delta variable
                     if lp_var_found == False:
                         raise Exception("The lp var is not found for weight decay")
-                p.data.add_(-lr, p.grad.data)
+                move = lr * p.grad.data 
                 if p.is_cuda:   
-                   p.data.sub_(grad_offset.cuda())
+                   move.add_(grad_offset.cuda())
                 else:
-                   p.data.sub_(grad_offset)
+                   move.add_(grad_offset)
+                p.data.add_(-move)
 
                 # print("bc lp grad", lr, torch.sum(grad_offset**2).item(),
                 #     torch.sum((grad_offset.cuda() + lr * p.grad.data)**2).item())

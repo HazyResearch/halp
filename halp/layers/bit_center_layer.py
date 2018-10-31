@@ -20,7 +20,16 @@ class BitCenterModule(nn.Module):
         self.do_offset = do_offset
         self.cache_iter = cache_iter
         for child in self.children():
-            child.set_mode(do_offset, cache_iter)
+            if isinstance(child, BitCenterModule):
+                child.set_mode(do_offset, cache_iter)
+            else:
+                logger.warning("None bit centering module " \
+                               + child.__class__.__name__)
+
+class BitCenterModuleList(BitCenterModule, nn.ModuleList):
+    def __init__(self, modules=None):
+        BitCenterModule.__init__(self)
+        nn.ModuleList.__init__(self, modules)
 
 
 class BitCenterLayer(BitCenterModule):
