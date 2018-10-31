@@ -216,9 +216,9 @@ def train_non_bit_center_optimizer(model,
 
                 optimizer.step(svrg_closure)
             else:
-                # pass
                 optimizer.step()
             train_loss_list.append(train_loss.item())
+            print(epoch_id, train_loss.item())
             # print(epoch_id, train_loss.item(), " sgd grad ", torch.sum(model.linear.weight.grad**2).item() *0.003**2, torch.sum(model.linear.bias.grad**2).item()*0.003**2, torch.sum(model.linear.weight**2).item(), torch.sum(model.linear.bias**2).item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
@@ -288,11 +288,9 @@ def train_bit_center_optimizer(model,
             # print("bc lp step ", epoch_id, j, loss_fp.item(), torch.sum( (model.linear.weight_lp + model.linear.weight_delta)**2).item(), torch.sum( (model.linear.bias_lp + model.linear.bias_delta)**2).item())
 
             if total_iter % T == T - 1:
-                # print("end lp ", i)
-                # print("before update ", torch.sum(layer.))
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
-            # print(epoch_id, i, train_loss.item())
+            print(epoch_id, i, train_loss.item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)

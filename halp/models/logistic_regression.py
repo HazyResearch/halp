@@ -27,12 +27,16 @@ class LogisticRegression(BitCenterModule):
     if dtype == "bc":
         pass    
     elif dtype == "fp":
-        # pass
-        # Sanity checked this produce similar results as with our own 
-        # implemented layers
-        self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
-        self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
+        pass
+        # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
+        # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
+        # self.linear.weight.data.copy_(linear_tmp.weight)
+        # self.linear.bias.data.copy_(linear_tmp.bias)
     elif dtype == "lp":
+        # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
+        # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
+        # self.linear.weight.data.copy_(linear_tmp.weight)
+        # self.linear.bias.data.copy_(linear_tmp.bias)
         pass
         # self.linear = torch.nn.Linear(self.input_dim, out_features=self.n_class)
         # self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
