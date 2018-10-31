@@ -190,7 +190,6 @@ def train_non_bit_center_optimizer(model,
             if len(list(X.size())) != 2:
                 X = X.view(X.size(0), -1)
             optimizer.zero_grad()
-            # print("check data type inside ", X.dtype, [x.shape for x in model.parameters()])
             train_loss = model(X, Y)
             train_loss.backward()
             if optimizer.__class__.__name__ == "SVRG":
@@ -237,10 +236,7 @@ def train_bit_center_optimizer(model,
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
-            # print("iter ", i)
             if total_iter % T == 0:
-                # print("start fp ", i)
-                # print("test total iter ", total_iter, T)
                 optimizer.on_start_fp_steps(model)
                 for j, (X_fp, Y_fp) in enumerate(train_loader):
                     optimizer.zero_grad()
