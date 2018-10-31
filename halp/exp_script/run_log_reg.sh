@@ -6,15 +6,6 @@
 # python mnist_log_reg.py --n-epochs=100 --batch-size=1 --reg=0.009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --cuda -T=60000
 # python mnist_log_reg.py --n-epochs=100 --batch-size=100 --reg=0.03 --alpha=0.005 --seed=1 --n-classes=10  --solver='bc-svrg' --cuda -T=600
 
-# test the behavior of bc sgd, we want the following three to have the same training loss history
-# python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='sgd' --cuda --debug-test
-# python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --cuda --debug-test
-# python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.000 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --cuda --debug-test
-
-# # test the behavior of bc svrg, we want the following three to have the same training loss history
-# python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --solver='svrg' --cuda --debug-test
-# python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-svrg' --cuda --debug-test
-# python mnist_log_reg.py --n-epochs=3 --batch-size=1 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-svrg' --cuda --debug-test
 
 # perform sgd with CA's config
 #python mnist_log_reg.py --n-epochs=10 --batch-size=1 --reg=0.009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --cuda 2>&1 | tee log/ca_sgd_fp16.log
