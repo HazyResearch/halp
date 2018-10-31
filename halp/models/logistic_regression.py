@@ -23,6 +23,7 @@ class LogisticRegression(BitCenterModule):
     self.criterion = \
         BitCenterCrossEntropy(cast_func=cast_func,
                               n_train_sample=n_train_sample)
+    self.cast_func = cast_func
 
     if dtype == "bc":
         pass    

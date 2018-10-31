@@ -101,7 +101,7 @@ class SVRG(torch.optim.SGD):
             if self._full_grad is None:
                 self._full_grad = []
                 for p in self._params:
-                    print("needs grad ", p.requires_grad)
+                    # print("needs grad ", p.requires_grad)
                     if p.grad is not None:
                         self._full_grad.append(p.grad.data.clone())
                     else:
