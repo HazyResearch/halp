@@ -92,24 +92,18 @@ class BitCenterOptim(SGD):
                     continue
                 cache = self.grad_cache[p_name.split("_delta")[0]]
                 grad_offset = self.get_single_grad_offset(cache)
-                if p.is_cuda:
-                    lr = lr.cuda()
-                    weight_decay = weight_decay.cuda()
-                else:
-                    lr = lr.cpu()
-                    weight_decay = weight_decay.cpu()
-                if weight_decay != 0.0:
+                if weight_decay.item() != 0.0:
                     # add the weight decay from the weight_lp style variable
                     # (the one casted from the full precision weight)
                     lp_var_found=False
                     for p_lp, p_lp_name in zip(param_group["params"], param_group["params_name"]):
                         if p_name.replace("_delta", "_lp") == p_lp_name:
                             lp_var_found = True
-                            p.grad.data.add_(weight_decay, p_lp.data + p.data)
+                            p.grad.data.add_(weight_decay.item(), p_lp.data + p.data)
                             # add weight decay from the delta variable
                     if lp_var_found == False:
                         raise Exception("The lp var is not found for weight decay")
-                move = lr * p.grad.data 
+                move = lr.item() * p.grad.data 
                 if p.is_cuda:   
                    move.add_(grad_offset.cuda())
                 else:

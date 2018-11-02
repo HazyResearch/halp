@@ -11,7 +11,8 @@ from halp.optim.svrg import SVRG
 from halp.models.logistic_regression import LogisticRegression
 from halp.utils.mnist_data_utils import load_mnist
 from halp.utils import utils
-from halp.utils.utils import void_cast_func, single_to_half_det
+from halp.utils.utils import void_cast_func
+from halp.utils.utils import single_to_half_det, single_to_half_stoc
 from halp.utils.train_utils import evaluate_acc
 from halp.utils.train_utils import train_non_bit_center_optimizer
 from halp.utils.train_utils import train_bit_center_optimizer
@@ -50,9 +51,12 @@ parser.add_argument("--solver", action="store", default="sgd", type=str,
 parser.add_argument("--reg", type=float, default=0.0, 
                     help="L2 regularizer strength")
 parser.add_argument("--cuda", action="store_true", 
-                    help="currently pytorch only support store true")
+                    help="currently pytorch only support store true.")
 parser.add_argument("--debug-test", action="store_true",
-                    help="switch to use small toy example for debugging")
+                    help="switch to use small toy example for debugging.")
+parser.add_argument("--rounding", default="near", type=str,
+                    choices=["near", "stoc", "void"],
+                    help="Support nearest (near) and stochastic (stoc) rounding.")
 args = parser.parse_args()
 
 utils.set_seed(args.seed)
@@ -67,8 +71,14 @@ if args.debug_test:
     Y_val = Y_val[0:debug_data_size]
     args.cast_func = void_cast_func
     args.T = X_train.shape[0]    
-else:
+elif args.rounding == "near":
     args.cast_func = single_to_half_det
+elif args.rounding == "stoc":
+    args.cast_func = single_to_half_stoc
+elif args.rounding == "void":
+    args.cast_func = void_cast_func
+else:
+    raise Exception("The rounding method is not supported!")
 
 X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
 Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
@@ -147,6 +157,8 @@ else:
 # run training procedure
 logger.info("optimizer " + optimizer.__class__.__name__)
 logger.info("model " + model.linear.__class__.__name__)
+logger.info("optimizer rounding func " + optimizer.cast_func.__name__)
+logger.info("model rounding func " + model.cast_func.__name__)
 if (args.solver == "bc-sgd") or (args.solver == "bc-svrg"):
     train_loss = train_bit_center_optimizer(
         model=model,

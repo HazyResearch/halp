@@ -14,7 +14,7 @@ def single_to_half_det(tensor):
 
 def single_to_half_stoc(tensor):
     assert tensor.dtype == torch.float
-    value = tensor.clone().cpu().numpy().astype(np.float32)
+    value = tensor.data.clone().cpu().numpy().astype(np.float32)
     value = np.ascontiguousarray(value)
     value_shape = value.shape
     value_ptr = value.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
