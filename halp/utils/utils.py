@@ -6,22 +6,17 @@ import ctypes
 def single_to_half_det(tensor):
     return tensor.half()
 
+
 def single_to_half_stoc(tensor):
     value = tensor.clone().cpu().numpy()
     value = np.ascontiguousarray(value)
     value_shape = value.shape
     assert tensor.dtype == torch.float
-
-    print("float value ", value)
-
     value_ptr = value.ctypes.data_as(ctypes.POINTER(ctypes.c_int32))
     value_int = np.ctypeslib.as_array(value_ptr, shape=value_shape)
-
-    print("ckpt 1 ", np.binary_repr(value_int[0, 0], width=32))
-
-    # # generating exponent by shift to the right. There
-    # # are 23 bit of mentissa. The sign bit is kept
-    # # print(value, int("0xFF800000", 16))
+    # generating exponent by shift to the right. There
+    # are 23 bit of mentissa. The sign bit is kept
+    # print(value, int("0xFF800000", 16))
     sign = np.bitwise_and(value_int, int("0x80000000", 16))
     exponent = np.bitwise_and(value_int, int("0x7F800000", 16))
     mantissa = np.bitwise_and(value_int, int("0x007FFFFF", 16))
@@ -37,7 +32,7 @@ def single_to_half_stoc(tensor):
     exponent_inc_bit = mantissa_shift_bit
     exponent += np.left_shift(exponent_inc_bit, 23)
     # if exponent is larger than the max range for fp32
-    # we saturate at the largest value for fp32. 
+    # we saturate at the largest value for fp32.
     # This is very unlikely to happen
     overflow_bit = np.right_shift(exponent, 31)
     exponent[overflow_bit != 0] = int("0x7E800000", 16)
@@ -46,11 +41,6 @@ def single_to_half_stoc(tensor):
     value_int |= sign
     value_int |= exponent
     value_int |= mantissa
-
-    # print("ckpt 2 ", np.binary_repr(mantissa_rand[0, 0], width=32))
-
-    # print("ckpt 3 ", np.binary_repr(value_int[0, 0], width=32))
-
     # add the random addition, and then round towards 0 to achieve the stochastic rounding
     assert value_int.flags["C_CONTIGUOUS"]
     value_stoc = np.bitwise_and(value_int, int("0xFFFFE000", 16))
@@ -108,8 +98,6 @@ def test_single_to_half_stoc():
     output_str = np.binary_repr(output[0, 0], width=32)
     print(input_str)
     print(output_str)
-
-
 
 
 def test_single_to_half_det():
