@@ -1,6 +1,7 @@
 python -m unittest optim/bit_center_optim_test.py
 python -m unittest layers/linear_layer_test.py
 python -m unittest layers/cross_entropy_test.py
+python -m unittest utils/utils.py
 
 echo "toy sgd example for bc sgd, sgd, lp sgd behavior comparison, expect the numbers to be very close"
 # test the behavior of bc sgd, we want the following three to have the same training loss history
