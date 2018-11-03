@@ -277,7 +277,7 @@ class TestBitCenterSVRG(TestBitCenterOptim, TestCase):
             assert list(param.shape) == list(cache.shape)
             assert (not name.endswith("_lp")) and (not name.endswith("_delta"))
             # assert on GPU and not require_grad
-            t_list = [(cache, torch.float16, True, False)]
+            t_list = [(cache, [torch.float16, torch.float32], True, False)]
             self.CheckLayerTensorProperty(t_list)
 
     @staticmethod

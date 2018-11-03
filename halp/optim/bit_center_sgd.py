@@ -199,6 +199,3 @@ class BitCenterSGD(BitCenterOptim):
     def get_single_grad_offset(self, cache):
         # we assume the size of the first dimension is the minibatch size
         return cache[self.step_iter]
-
-
-

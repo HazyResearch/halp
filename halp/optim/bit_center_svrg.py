@@ -15,6 +15,8 @@ logger = logging.getLogger()
 class BitCenterSVRG(BitCenterOptim):
     """
     Implementation of bit centering SVRG
+    as the gradient cache is small, we cache gradients on GPU
+    We accumulate full gradient in full precision and then cast it
     """
     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
         n_train_sample=1, cast_func=void_cast_func, minibatch_size=128, T=1):
@@ -23,21 +25,27 @@ class BitCenterSVRG(BitCenterOptim):
             minibatch_size=minibatch_size, T=T)
 
     def setup_single_grad_cache(self, grad_shape):
+        logger.info("setup fp accum for full grad")
         cache_shape = grad_shape
-        return self.cast_func(torch.Tensor(np.zeros(cache_shape))).cuda()
+        return torch.Tensor(np.zeros(cache_shape)).cuda()
 
     def update_single_grad_cache(self, grad, cache):
-        cache.add_(self.cast_func(grad))
+        cache.add_(grad)
 
     def get_single_grad_offset(self, cache):
         # we assume the size of the first dimension is the minibatch size
-        return cache        
+        return cache
+
+    def on_start_fp_steps(self, model):
+        self.setup_grad_cache()
+        model.set_mode(do_offset=True)
 
     def on_end_fp_steps(self, model):
         # for cache_group in self.grad_cache_groups:
-        for cache in self.grad_cache.values():
+        for key, cache in self.grad_cache.items():
             if cache is not None:
                 cache.div_(self.n_minibatch_per_epoch)
+                self.grad_cache[key] = self.cast_func(cache)
         model.set_mode(do_offset=True)
 
 
