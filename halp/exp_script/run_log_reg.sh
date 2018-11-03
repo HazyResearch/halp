@@ -36,6 +36,8 @@ python mnist_log_reg.py --n-epochs=10 --batch-size=1 --reg=0.00009 --alpha=0.003
 
 python mnist_log_reg.py --n-epochs=10 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_lp_svrg_fp16_cmp_near.log
 
+python mnist_log_reg.py --n-epochs=10 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='stoc' -T=60000 --cuda 2>&1 | tee log/ca_lp_svrg_fp16_cmp_stoc.log
+
 python mnist_log_reg.py --n-epochs=10 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp16_cmp_near.log
 
 python mnist_log_reg.py --n-epochs=10 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_bc_sgd_fp16_cmp_near.log

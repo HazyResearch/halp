@@ -13,6 +13,8 @@ def single_to_half_det(tensor):
     return tensor.half()
 
 def single_to_half_stoc(tensor):
+    if tensor.dtype == torch.half:
+        return tensor.clone()
     assert tensor.dtype == torch.float
     value = tensor.data.clone().cpu().numpy().astype(np.float32)
     value = np.ascontiguousarray(value)
