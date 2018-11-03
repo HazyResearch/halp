@@ -37,8 +37,11 @@ class LogisticRegression(BitCenterModule):
         self.linear.bias.data.copy_(linear_tmp.bias)
     elif dtype == "lp":
         # pass
-        self.linear.half()
-        self.criterion.half()
+        if self.cast_func == void_cast_func:
+            pass
+        else:
+            self.linear.half()
+            self.criterion.half()
     else:
         raise Exception("dtype not supported")
     self.dtype = dtype
