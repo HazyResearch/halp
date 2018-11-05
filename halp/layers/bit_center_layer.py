@@ -13,6 +13,10 @@ logger = logging.getLogger()
 
 
 class BitCenterModule(nn.Module):
+    '''
+    Every layer and module using bit centering operations
+    should inheritate this base module class
+    '''
     def __init__(self):
         nn.Module.__init__(self)
 
@@ -33,6 +37,15 @@ class BitCenterModuleList(BitCenterModule, nn.ModuleList):
 
 
 class BitCenterLayer(BitCenterModule):
+    '''
+    Every bit center style layer should inheritate this base
+    class. It provides common behavior of forward and backward
+    caching behavior. The current implementation directly 
+    support the construction of layers with a single weight and 
+    a single bias variable, like conv and linear layer. For
+    other layers such as the cross entropy layer, they can be
+    implemented by overwriting some of the member functions.
+    '''
     def __init__(self,
                  fp_functional=void_func,
                  lp_functional=void_func,
