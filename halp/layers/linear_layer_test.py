@@ -22,7 +22,7 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
                       n_train_sample,
                       dim_in,
                       dim_out,
-                      bias,
+                      bias=False,
                       cast_func=void_cast_func,
                       do_double=True):
         layer = BitCenterLinear(
