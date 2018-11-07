@@ -78,7 +78,7 @@ def train_non_bit_center_optimizer(model,
             else:
                 optimizer.step()
             train_loss_list.append(train_loss.item())
-            print(epoch_id, train_loss.item())
+            # print(epoch_id, train_loss.item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
@@ -130,7 +130,7 @@ def train_bit_center_optimizer(model,
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
-            print(epoch_id, i, train_loss.item())
+            # print(epoch_id, i, train_loss.item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)

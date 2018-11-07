@@ -20,6 +20,7 @@ import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
+import time
 
 
 parser = argparse.ArgumentParser()
@@ -79,6 +80,10 @@ elif args.rounding == "void":
     args.cast_func = void_cast_func
 else:
     raise Exception("The rounding method is not supported!")
+
+# TODO resolve this for trainin procedure and avoid this check
+if X_train.shape[0] != args.batch_size * args.T:
+    raise Exception("Currently not supporting settings other than T = 1 epoch, please resolve")
 
 X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
 Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
@@ -154,6 +159,8 @@ elif args.solver == "bc-svrg":
 else:
     raise Exception(args.solver + " is an unsupported optimizer.")
 
+
+start_time = time.time()
 # run training procedure
 logger.info("optimizer " + optimizer.__class__.__name__)
 logger.info("model " + model.linear.__class__.__name__)
@@ -177,3 +184,5 @@ else:
         n_epochs=args.n_epochs,
         use_cuda=args.cuda,
         dtype=args.dtype)
+end_time = time.time()
+print("Elapsed training time: ", end_time - start_time)
