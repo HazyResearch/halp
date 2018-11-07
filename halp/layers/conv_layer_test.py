@@ -18,10 +18,10 @@ logger = logging.getLogger()
 # and the input output channels
 # TODO switch to using config generation function to do generate
 # these parameters.
-CHANNEL_IN=3
-CHANNEL_OUT=5
-INPUT_W=17
-INPUT_H=17
+CHANNEL_IN=1
+CHANNEL_OUT=1
+INPUT_W=4
+INPUT_H=4
 KERNEL_SIZE=(3, 3)
 STRIDE=2
 PADDING=0

@@ -14,6 +14,13 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
+# helper functions for backward computation of bit center conv 2d:
+# we define these function to get gradient wrt input and weights
+get_grad_input = lambda grad_out_reshape, weight: \
+    F.conv_transpose2d(grad_out_reshape, weight, bias=None)
+get_grad_weight = lambda input_unf, grad_output_reshape: \
+    torch.sum(torch.bmm(input_unf, grad_output_reshape), dim=0)
+
 
 class BitCenterConv2DFunction(Function):
     """
@@ -74,7 +81,6 @@ class BitCenterConv2DFunction(Function):
         ctx.save_for_backward(input_lp_unf, input_delta_unf, output_grad_lp,
                               weight_lp, weight_delta, bias_lp, bias_delta)
         ctx.hyperparam = (stride, padding, dilation, groups)
-        #\tilda X = mm(X_L, W_L)
         conv2d = lambda input_unf, weight: \
             input_unf.transpose(1, 2).matmul(
             weight.permute(1, 2, 3, 0).view(-1, weight.size(0)))
@@ -104,11 +110,6 @@ class BitCenterConv2DFunction(Function):
         # reshape output grad for further computation
         grad_output_reshape = grad_output.permute(0, 2, 3, 1).view(batch_size, -1, channel_out)
         output_grad_lp_reshape = output_grad_lp.permute(0, 2, 3, 1).view(batch_size, -1, channel_out)
-        # define function to get gradient wrt input and weights
-        get_grad_input = lambda grad_out_reshape, weight: \
-            F.conv_transpose2d(grad_out_reshape, weight, bias=None)
-        get_grad_weight = lambda input_unf, grad_output_reshape: \
-            torch.sum(torch.bmm(input_unf, grad_output_reshape), dim=0)
         grad_input_lp = None
         grad_input_delta = \
             get_grad_input(grad_output, (weight_lp + weight_delta)) \

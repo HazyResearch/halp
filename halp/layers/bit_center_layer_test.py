@@ -101,13 +101,11 @@ class TestBitCenterLayer(HalpTest):
         # using this loss, the grad_output decompose directly to offset and delta
         # in the fp and lp steps
         minibatch_size = 35
-        dim_in = 24
-        dim_out = 17
-        # minibatch_size = 2
-        # dim_in = 3
-        # dim_out = 1
+        dim_in = 17
+        dim_out = 24
         perturb_eps = 1e-6
         rtol_num_analytical_grad = 1e-3
+        atol_num_analytical_grad = 1e-6
         np.random.seed(0)
         torch.manual_seed(0)
         torch.cuda.manual_seed_all(0)
@@ -136,10 +134,14 @@ class TestBitCenterLayer(HalpTest):
                                               numerical_grads):
                     if (ana_grad is None) and (num_grad is None):
                         continue
+
                     np.testing.assert_allclose(
                         ana_grad.data.cpu().numpy().ravel(),
                         num_grad.data.cpu().numpy().ravel(),
-                        rtol=rtol_num_analytical_grad)
+                        rtol=rtol_num_analytical_grad,
+                        atol=atol_num_analytical_grad * np.max(np.abs(ana_grad.data.cpu().numpy().ravel())))
+
+
         logger.info(self.__class__.__name__ + " function test passed!")
 
     def check_layer_param_and_cache(self, layer):
