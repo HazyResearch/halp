@@ -17,6 +17,30 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
     '''
     Test the functionality of bit centering linear layers
     '''
+    def get_config(self, type="grad_check"):
+        config = {}
+        if type == "grad_check":
+            config["n_train_sample"] = 35
+            config["dim_in"] = 17
+            config["dim_out"] = 24
+            config["bias"] = True
+            config["cast_func"] = void_cast_func
+            config["do_double"] = True
+            config["seed"] = 0 
+            config["batch_size"] = 35
+        elif type == "fw_bw_proc":
+            config["n_train_sample"] = 98
+            config["dim_in"] = 13
+            config["dim_out"] = 31
+            config["bias"] = True
+            config["cast_func"] = single_to_half_det
+            config["do_double"] = False
+            config["seed"] = 0 
+            config["batch_size"] = 33
+        else:
+            raise Exception("Config type not supported!")
+        return config
+
 
     def prepare_layer(self,
                       n_train_sample,
@@ -24,7 +48,9 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
                       dim_out,
                       bias=False,
                       cast_func=void_cast_func,
-                      do_double=True):
+                      do_double=True,
+                      seed=0,
+                      batch_size=1):
         layer = BitCenterLinear(
             in_features=dim_in,
             out_features=dim_out,
@@ -67,7 +93,8 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
                   bias,
                   cast_func=void_cast_func,
                   do_double=True,
-                  seed=0):
+                  seed=0,
+                  batch_size=1):
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)

@@ -14,47 +14,64 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-# first hard code the input dimensionality 
-# and the input output channels
-# TODO switch to using config generation function to do generate
-# these parameters.
-CHANNEL_IN=1
-CHANNEL_OUT=1
-INPUT_W=4
-INPUT_H=4
-KERNEL_SIZE=(3, 3)
-STRIDE=2
-PADDING=0
-
-
 class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
     '''
-    Test the functionality of bit centering linear layers
+    Test the functionality of bit centering conv2d layers
     '''
+    def get_config(self, type="grad_check"):
+        config = {}
+        config["input_w"] = 4
+        config["input_h"] = 5
+        config["kernel_size"] = (3, 3)
+        config["stride"] = 1
+        config["padding"] = 0
+        if type == "grad_check":
+            config["n_train_sample"] = 35
+            config["dim_in"] = 8
+            config["dim_out"] = 16
+            config["bias"] = True
+            config["cast_func"] = void_cast_func
+            config["do_double"] = True
+            config["seed"] = 0 
+            config["batch_size"] = 35
+        elif type == "fw_bw_proc":
+            config["n_train_sample"] = 98
+            config["dim_in"] = 13
+            config["dim_out"] = 31
+            config["bias"] = True
+            config["cast_func"] = single_to_half_det
+            config["do_double"] = False
+            config["seed"] = 0 
+            config["batch_size"] = 33
+        else:
+            raise Exception("Config type not supported!")
+        return config
+
     def prepare_layer(self,
+                  input_w,
+                  input_h,
+                  kernel_size,
+                  stride,
+                  padding,
                   n_train_sample,
                   dim_in,
                   dim_out,
                   bias,
                   cast_func=void_cast_func,
-                  do_double=True):
+                  do_double=True, 
+                  seed=0,
+                  batch_size=1):
         layer = BitCenterConv2D(
             in_channels=dim_in,
             out_channels=dim_out,
-            kernel_size=KERNEL_SIZE,
-            stride=STRIDE,
-            padding=PADDING,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
             dilation=1,
             groups=1,
             bias=bias,
             cast_func=cast_func,
             n_train_sample=n_train_sample)
-
-        # print("ckpt 1 ", layer.weight.shape, layer.bias.shape, \
-        #     torch.randn(
-        #             dim_out, dim_in, *layer.kernel_size, dtype=torch.double,
-        #             requires_grad=False).cuda().shape)
-
 
         # Note do_double = setup layer for gradient check, otherwise, it is for checking
         # the tensor properties
@@ -86,13 +103,19 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
         return layer
 
     def get_input(self,
+                  input_w,
+                  input_h,
+                  kernel_size,
+                  stride,
+                  padding,
                   n_train_sample,
                   dim_in,
                   dim_out,
                   bias,
                   cast_func=void_cast_func,
                   do_double=True,
-                  seed=0):
+                  seed=0,
+                  batch_size=1):
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
@@ -100,97 +123,23 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
 
         if do_double:
             input_delta = Parameter(
-                torch.randn(n_train_sample, dim_in, INPUT_W, INPUT_H, dtype=torch.double).cuda(),
+                torch.randn(n_train_sample, dim_in, input_w, input_h, dtype=torch.double).cuda(),
                 requires_grad=True)
             input_fp = Parameter(
-                torch.randn(n_train_sample, dim_in, INPUT_W, INPUT_H, dtype=torch.double).cuda(),
+                torch.randn(n_train_sample, dim_in, input_w, input_h, dtype=torch.double).cuda(),
                 requires_grad=True)
         else:
             input_delta = Parameter(
                 cast_func(
-                    torch.randn(n_train_sample, dim_in, INPUT_W, INPUT_H,
+                    torch.randn(n_train_sample, dim_in, input_w, input_h,
                                 dtype=torch.double).cuda()),
                 requires_grad=True)
             input_fp = Parameter(
-                torch.randn(n_train_sample, dim_in, INPUT_W, INPUT_H, dtype=torch.float).cuda(),
+                torch.randn(n_train_sample, dim_in, input_w, input_h, dtype=torch.float).cuda(),
                 requires_grad=True)
         return [input_fp,], [input_delta,]
-
-
-
-# def init_test():
-#     set_seed(0)
-#     CHANNEL_IN=5
-#     CHANNEL_OUT=6
-#     BATCH_SIZE=10
-#     INPUT_W=4
-#     INPUT_H=4
-#     KERNEL_SIZE=(3, 3)
-#     # INPUT_W=1
-#     # INPUT_H=1
-#     # KERNEL_SIZE=(1, 1)
-#     STRIDE=1
-#     PADDING=0
-
-#     input_val = Parameter(torch.randn(BATCH_SIZE, CHANNEL_IN, INPUT_W, INPUT_H), requires_grad=True)
-#     layer = torch.nn.Conv2d(CHANNEL_IN, CHANNEL_OUT, KERNEL_SIZE, bias=False)
-#     output = layer(input_val)
-
-#     print("input ", input_val.shape, output.shape)
-
-#     loss = torch.sum(output)
-#     loss.backward()
-
-#     output_grad = torch.ones_like(output)
-#     # input_grad = torch.nn.functional.conv_transpose2d(output_grad, layer.weight.data)
-#     # weight_grad = torch.nn.functional.conv_transpose2d(output_grad, input_val)
-#     # print("pre check ", output_grad.shape, input_val.shape, output_grad.transpose(0, 1).shape)
-
-#     # print("pt grad weight ", layer.weight.grad, layer.weight.grad.shape)
-#     # print("dc grad weight ", weight_grad[:, :, 1:-1, 1:-1], weight_grad.shape)
-
-#     # using the im2col col2im approaches
-#     output_grad_unf = output_grad.permute(0, 2, 3, 1).view(output_grad.size(0), -1, output_grad.size(1))
-#     input_unf = torch.nn.functional.unfold(input_val, KERNEL_SIZE)
-
-#     # print("test ", output_grad_unf.shape, input_unf.shape)
-
-
-#     grad_weight = torch.bmm(input_unf, output_grad_unf).sum(dim=0)
-#     grad_weight = grad_weight.view(CHANNEL_IN, *KERNEL_SIZE, CHANNEL_OUT).permute(3, 0, 1, 2)
-#     weight = layer.weight.view(CHANNEL_OUT, -1)
-
-#     # print("test shape ", output_grad_unf.shape, weight.shape)
-
-#     grad_input = output_grad_unf.matmul(weight)
-#     grad_input = torch.nn.functional.fold(grad_input.transpose(1, 2), 
-#         output_size=(INPUT_W, INPUT_H), kernel_size=KERNEL_SIZE)
-#     print("pt grad weight ", torch.sum(layer.weight.grad**2), layer.weight.grad.shape)
-#     print("dc grad weight ", torch.sum(grad_weight**2), grad_weight.shape)
-
-#     print("pt grad input ", torch.sum(input_val.grad**2), input_val.grad.shape)
-#     print("dc grad input ", torch.sum(grad_input**2), grad_input.shape)
 
 
 if __name__ == "__main__":
     print(torch.__version__)
     unittest.main()
-
-    # init_test()
-
-    # unfold = torch.nn.Unfold(kernel_size=(2, 3))
-    # input = torch.randn(2, 5, 3, 4)
-    # output = unfold(input)
-    # output.size()
-    
-    # # Convolution is equivalent with Unfold + Matrix Multiplication + Fold (or view to output shape)
-    # inp = torch.randn(1, 3, 10, 12) 
-    # w = torch.randn(2, 3, 4, 5)
-    # inp_unf = torch.nn.functional.unfold(inp, (4, 5))
-    # out_unf = inp_unf.transpose(1, 2).matmul(w.view(w.size(0), -1).t()).transpose(1, 2)
-    # out_unf[:] = 1.0
-    # out = torch.nn.functional.fold(out_unf, (7, 8), (1, 1))
-
-    # print("check output ", out)
-
-    # print((torch.nn.functional.conv2d(inp, w) - out).abs().max())
