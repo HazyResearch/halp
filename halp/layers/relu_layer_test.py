@@ -115,24 +115,9 @@ class TestBitCenterReLULayer(TestBitCenterLayer, TestCase):
             input_delta,
         ]
 
-    def get_analytical_grad(self, layer, input_fp, input_delta, target=None):
-        layer.set_mode(do_offset=True)
-        grad_list = []
-        output_fp = layer(*input_fp)
-        output_fp_copy = output_fp.data.clone()
-        loss_fp = torch.sum(0.5 * output_fp * output_fp)
-        loss_fp.backward()
-        grad_input_fp = layer.input_grad_for_test.clone()
-
-        layer.set_mode(do_offset=False)
-        output_lp = layer(*input_delta)
-        loss_lp = torch.sum(0.5 * output_lp * output_lp)
-        loss_lp.backward()
-        grad_input_delta = layer.input_grad_for_test.clone()
-        # as we only have 1 minibatch, we can directly use layer.grad_output_cache
-        input_grad = grad_input_fp + grad_input_delta
-        grad_list.append(input_grad)
-        return output_lp + output_fp, grad_list
+    def get_analytical_param_grad(self, layer):
+      # as there is no param in the relu layer, we use empty function
+      return []
 
     def get_numerical_grad(self,
                            layer,

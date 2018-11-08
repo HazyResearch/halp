@@ -37,7 +37,21 @@ class TestBitCenterLayer(HalpTest):
         """
         pass
 
+    def get_analytical_param_grad(self, layer):
+        # this function get the analytical grad with respect to parameters
+        # This function can be very layer specfic.
+        grad_list = []
+        weight_grad = layer.weight.grad + layer.weight_delta.grad
+        grad_list.append(weight_grad)
+        if layer.bias is not None:
+            bias_grad = layer.bias.grad + layer.bias_delta.grad
+            grad_list.append(bias_grad)
+        return grad_list
+
     def get_analytical_grad(self, layer, input_fp, input_delta, target=None):
+        # this function get the analytical grad with respect to parameters and input
+        # it calls get_analytical_param_grad to get grad wrt to paramters.
+        # the framework in the function is generic to all layers
         layer.set_mode(do_offset=True)
         grad_list = []
         output_fp = layer(*input_fp)
@@ -55,12 +69,23 @@ class TestBitCenterLayer(HalpTest):
         input_grad = grad_input_fp + grad_input_delta
         grad_list.append(input_grad)
 
-        weight_grad = layer.weight.grad + layer.weight_delta.grad
-        grad_list.append(weight_grad)
-        if layer.bias is not None:
-            bias_grad = layer.bias.grad + layer.bias_delta.grad
-            grad_list.append(bias_grad)
+        grad_list += self.get_analytical_param_grad(layer)
         return output_lp + output_fp, grad_list
+
+    def get_numerical_param_grad(self, layer, input, get_loss, perturb_eps):
+        # this function get the numerical grad with respect to parameters and input
+        # it calls get_analytical_param_grad to get grad wrt to paramters.
+        # the framework in the function is generic to all layers
+        # Note get loss is a function defined in function get_numerical_grad
+        grad_list = []
+        num_weight_grad = get_numerical_jacobian(
+            get_loss, input, target=layer.weight, eps=perturb_eps)
+        grad_list.append(num_weight_grad)
+        if layer.bias is not None:
+            num_bias_grad = get_numerical_jacobian(
+                get_loss, input, target=layer.bias, eps=perturb_eps)
+            grad_list.append(num_bias_grad)
+        return grad_list
 
     def get_numerical_grad(self,
                            layer,
@@ -68,7 +93,9 @@ class TestBitCenterLayer(HalpTest):
                            input_delta,
                            perturb_eps,
                            target=None):
-        # get numerical finite difference
+        # this function get the numerical grad with respect to parameters and input
+        # it calls get_analytical_param_grad to get grad wrt to paramters.
+        # the framework in the function is generic to all layers
         layer.set_mode(do_offset=True)
 
         def get_loss(x):
@@ -87,13 +114,14 @@ class TestBitCenterLayer(HalpTest):
         num_input_grad = get_numerical_jacobian(
             get_loss, input, target=input[0], eps=perturb_eps)
         grad_list.append(num_input_grad)
-        num_weight_grad = get_numerical_jacobian(
-            get_loss, input, target=layer.weight, eps=perturb_eps)
-        grad_list.append(num_weight_grad)
-        if layer.bias is not None:
-            num_bias_grad = get_numerical_jacobian(
-                get_loss, input, target=layer.bias, eps=perturb_eps)
-            grad_list.append(num_bias_grad)
+        grad_list += self.get_numerical_param_grad(layer, input, get_loss, perturb_eps)
+        # num_weight_grad = get_numerical_jacobian(
+        #     get_loss, input, target=layer.weight, eps=perturb_eps)
+        # grad_list.append(num_weight_grad)
+        # if layer.bias is not None:
+        #     num_bias_grad = get_numerical_jacobian(
+        #         get_loss, input, target=layer.bias, eps=perturb_eps)
+        #     grad_list.append(num_bias_grad)
         return output_final, grad_list
 
     def test_forward_backward_output(self):
