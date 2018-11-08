@@ -17,6 +17,7 @@ class BitCenterModule(nn.Module):
     Every layer and module using bit centering operations
     should inheritate this base module class
     '''
+
     def __init__(self):
         nn.Module.__init__(self)
 
@@ -30,6 +31,7 @@ class BitCenterModule(nn.Module):
                 logger.warning("None bit centering module " \
                                + child.__class__.__name__)
 
+
 class BitCenterModuleList(BitCenterModule, nn.ModuleList):
     def __init__(self, modules=None):
         BitCenterModule.__init__(self)
@@ -40,12 +42,13 @@ class BitCenterLayer(BitCenterModule):
     '''
     Every bit center style layer should inheritate this base
     class. It provides common behavior of forward and backward
-    caching behavior. The current implementation directly 
-    support the construction of layers with a single weight and 
+    caching behavior. The current implementation directly
+    support the construction of layers with a single weight and
     a single bias variable, like conv and linear layer. For
     other layers such as the cross entropy layer, they can be
     implemented by overwriting some of the member functions.
     '''
+
     def __init__(self,
                  fp_functional=void_func,
                  lp_functional=void_func,
@@ -101,7 +104,19 @@ class BitCenterLayer(BitCenterModule):
         return cache
 
     def update_grad_output_cache(self, self1, input, output):
-        pass
+        # use duplicated self to adapt to the pytorch API requirement
+        # as this is a class member function.
+        # Specific layer might need to update this function. This is
+        # because the returned gradient is not in the order as shown
+        # in the Python API, e.g. the linear layer
+        if self.do_offset:
+            self.grad_output_cache[self.grad_cache_iter:min(
+                self.grad_cache_iter +
+                output[0].size()[0], self.n_train_sample)].data.copy_(
+                    self.cast_func(output[0].cpu()))
+            self.grad_cache_iter = (
+                self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
+        self.input_grad_for_test = input[0]
 
     def update_input_cache(self, input):
         if self.do_offset:

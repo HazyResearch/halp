@@ -23,6 +23,7 @@ class TestBitCenterLayer(HalpTest):
     This template class can benefits parametric layers with one weight param
     and one bias param. E.g. convolutional layers, linear layers
     '''
+
     def get_config(self):
         pass
 
@@ -102,10 +103,6 @@ class TestBitCenterLayer(HalpTest):
         # In this test, we use the quadratic loss, this is because
         # using this loss, the grad_output decompose directly to offset and delta
         # in the fp and lp steps
-
-        # minibatch_size = 35
-        # dim_in = 17
-        # dim_out = 24
         perturb_eps = 1e-6
         rtol_num_analytical_grad = 1e-3
         atol_num_analytical_grad = 1e-6
@@ -120,13 +117,6 @@ class TestBitCenterLayer(HalpTest):
                 config["cast_func"] = void_cast_func
                 config["seed"] = i + 1
                 layer = self.prepare_layer(**config)
-                # input_fp, input_delta = self.get_input(
-                #     minibatch_size,
-                #     dim_in,
-                #     dim_out,
-                #     bias,
-                #     do_double=True,
-                #     seed=i + 1)
                 input_fp, input_delta = self.get_input(**config)
                 analytical_output, analytical_grads = \
                     self.get_analytical_grad(layer, input_fp, input_delta)
@@ -147,7 +137,8 @@ class TestBitCenterLayer(HalpTest):
                         ana_grad.data.cpu().numpy().ravel(),
                         num_grad.data.cpu().numpy().ravel(),
                         rtol=rtol_num_analytical_grad,
-                        atol=atol_num_analytical_grad * np.max(np.abs(ana_grad.data.cpu().numpy().ravel())))
+                        atol=atol_num_analytical_grad * np.max(
+                            np.abs(ana_grad.data.cpu().numpy().ravel())))
 
         logger.info(self.__class__.__name__ + " function test passed!")
 
@@ -170,33 +161,20 @@ class TestBitCenterLayer(HalpTest):
         # check if the behavior of BitCentering linear layer is going as expected for forward
         # the backward behavior is guaranteed by
         # bit center linear function test TestBitCenterLinearFuncGradientCheck
-        # n_sample = 98
-        # n_dim = 13
-        # n_out_dim = 31
-        # n_minibatch = int(np.ceil(n_sample / minibatch_size))
         for use_bias in [True, False]:
-            # use_bias = True
             config = self.get_config(type="fw_bw_proc")
             config["bias"] = use_bias
-            # minibatch_size = 33
             layer = self.prepare_layer(**config)
             cast_func = config["cast_func"]
             n_sample = config["n_train_sample"]
             minibatch_size = config["batch_size"]
-            n_minibatch = int(np.ceil(config["n_train_sample"] / config["batch_size"]))
+            n_minibatch = int(
+                np.ceil(config["n_train_sample"] / config["batch_size"]))
 
-            # layer = self.prepare_layer(
-            #     n_sample,
-            #     n_dim,
-            #     n_out_dim,
-            #     use_bias,
-            #     cast_func=single_to_half_det,
-            #     do_double=False)
             # test fp mode
             layer.set_mode(do_offset=True)
             layer.cuda()
             input_tensor_list = []
-            # target_list = []
             if (cast_func == single_to_half_det) or (
                     cast_func == single_to_half_stoc):
                 self.check_layer_param_and_cache(layer)
@@ -210,12 +188,6 @@ class TestBitCenterLayer(HalpTest):
                         start_idx:end_idx].clone().numpy()
                 config["n_train_sample"] = end_idx - start_idx
                 input_fp, _ = self.get_input(**config)
-                # input_fp, _ = self.get_input(
-                #     end_idx - start_idx,
-                #     n_dim,
-                #     n_out_dim,
-                #     use_bias,
-                #     do_double=False)
 
                 output = layer(*input_fp)
                 input_tensor_list.append(input_fp)
@@ -236,15 +208,6 @@ class TestBitCenterLayer(HalpTest):
                     cast_func == single_to_half_stoc):
                 self.check_layer_param_and_cache(layer)
             for i in range(n_minibatch):
-                # the random seed is controlled, so the target labels should be the same
-                # as in the fp iterations
-                # _, input_delta = self.get_input(
-                #     end_idx - start_idx,
-                #     n_dim,
-                #     n_out_dim,
-                #     use_bias,
-                #     cast_func=single_to_half_det,
-                #     do_double=False)
                 _, input_delta = self.get_input(**config)
                 output = layer(*input_delta)
                 torch.sum(output).backward()

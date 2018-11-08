@@ -18,6 +18,7 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
     '''
     Test the functionality of bit centering conv2d layers
     '''
+
     def get_config(self, type="grad_check"):
         config = {}
         config["input_w"] = 4
@@ -32,7 +33,7 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
             config["bias"] = True
             config["cast_func"] = void_cast_func
             config["do_double"] = True
-            config["seed"] = 0 
+            config["seed"] = 0
             config["batch_size"] = 35
         elif type == "fw_bw_proc":
             config["n_train_sample"] = 98
@@ -41,26 +42,26 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
             config["bias"] = True
             config["cast_func"] = single_to_half_det
             config["do_double"] = False
-            config["seed"] = 0 
+            config["seed"] = 0
             config["batch_size"] = 33
         else:
             raise Exception("Config type not supported!")
         return config
 
     def prepare_layer(self,
-                  input_w,
-                  input_h,
-                  kernel_size,
-                  stride,
-                  padding,
-                  n_train_sample,
-                  dim_in,
-                  dim_out,
-                  bias,
-                  cast_func=void_cast_func,
-                  do_double=True, 
-                  seed=0,
-                  batch_size=1):
+                      input_w,
+                      input_h,
+                      kernel_size,
+                      stride,
+                      padding,
+                      n_train_sample,
+                      dim_in,
+                      dim_out,
+                      bias,
+                      cast_func=void_cast_func,
+                      do_double=True,
+                      seed=0,
+                      batch_size=1):
         layer = BitCenterConv2D(
             in_channels=dim_in,
             out_channels=dim_out,
@@ -82,12 +83,18 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
             # input_fp = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
             layer.weight.data.copy_(
                 torch.randn(
-                    dim_out, dim_in, *layer.kernel_size, dtype=torch.double,
+                    dim_out,
+                    dim_in,
+                    *layer.kernel_size,
+                    dtype=torch.double,
                     requires_grad=False).cuda())
             layer.weight_lp.data.copy_(layer.weight.data)
             layer.weight_delta.data.copy_(
                 torch.randn(
-                    dim_out, dim_in, *layer.kernel_size, dtype=torch.double,
+                    dim_out,
+                    dim_in,
+                    *layer.kernel_size,
+                    dtype=torch.double,
                     requires_grad=True).cuda())
             if bias:
                 layer.bias.data.copy_(
@@ -123,21 +130,44 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
 
         if do_double:
             input_delta = Parameter(
-                torch.randn(n_train_sample, dim_in, input_w, input_h, dtype=torch.double).cuda(),
+                torch.randn(
+                    n_train_sample,
+                    dim_in,
+                    input_w,
+                    input_h,
+                    dtype=torch.double).cuda(),
                 requires_grad=True)
             input_fp = Parameter(
-                torch.randn(n_train_sample, dim_in, input_w, input_h, dtype=torch.double).cuda(),
+                torch.randn(
+                    n_train_sample,
+                    dim_in,
+                    input_w,
+                    input_h,
+                    dtype=torch.double).cuda(),
                 requires_grad=True)
         else:
             input_delta = Parameter(
                 cast_func(
-                    torch.randn(n_train_sample, dim_in, input_w, input_h,
-                                dtype=torch.double).cuda()),
+                    torch.randn(
+                        n_train_sample,
+                        dim_in,
+                        input_w,
+                        input_h,
+                        dtype=torch.double).cuda()),
                 requires_grad=True)
             input_fp = Parameter(
-                torch.randn(n_train_sample, dim_in, input_w, input_h, dtype=torch.float).cuda(),
+                torch.randn(
+                    n_train_sample,
+                    dim_in,
+                    input_w,
+                    input_h,
+                    dtype=torch.float).cuda(),
                 requires_grad=True)
-        return [input_fp,], [input_delta,]
+        return [
+            input_fp,
+        ], [
+            input_delta,
+        ]
 
 
 if __name__ == "__main__":

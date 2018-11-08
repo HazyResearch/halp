@@ -24,16 +24,16 @@ get_grad_weight = lambda input_unf, grad_output_reshape: \
 
 class BitCenterConv2DFunction(Function):
     """
-    This class does forward and backward computation for bit center 
+    This class does forward and backward computation for bit center
     2D convolution. We document the forward backward computation math
     here for normal conv2d. The math for bit center Conv2d can be derived
-    by decomposing the input and weights into full precision offset and 
+    by decomposing the input and weights into full precision offset and
     low precision delta.
     Given input X in the shape of (b, n_i, w_i, h_i)
     and filter W in the shape of (n_o, n_i, w_k, h_k)
-    For simplicity we write out the math with 0 padding and stride 1 
+    For simplicity we write out the math with 0 padding and stride 1
     in the following:
-    we transform the input tensor X to a matrix X_L in the shape of 
+    we transform the input tensor X to a matrix X_L in the shape of
     (b, w_o * h_o, n_i * w_k * h_k). W is transformed into W_L in the shape of
     (n_i * w_k * h_k, n_o).
     In the forward pass,
@@ -43,12 +43,13 @@ class BitCenterConv2DFunction(Function):
     \par L / \par W_L = matmul(X_L^T, \par L / \par \tilde{X}_L)
     \par L / \par X_L = matmul(\par L / \par \tilde{X}_L, W_L^T)
     Note here \par L / \par X_L can be directly done using deconv operations
-    We opt to use fold and unfold function to explicitly do 
+    We opt to use fold and unfold function to explicitly do
     \par L / \par W_L = matmul(X_L^T, \par L / \par \tilde{X}_L)
     because we the current deconv (conv_transpose2d) API has some flexibility issue.
-    Note \par L / \par W_L, and \par L / \par X_L are in the shape of 
+    Note \par L / \par W_L, and \par L / \par X_L are in the shape of
     () and () respectively. We need properly reshape to return the gradient
     """
+
     @staticmethod
     def forward(ctx,
                 input_delta,
@@ -67,12 +68,13 @@ class BitCenterConv2DFunction(Function):
         # output_grad_lp is only for backward function, but we need to keep it in ctx
         # for backward function to access it.
         # TODO: extend to accommodate different stride, padding, dilation, groups
-        assert (stride, padding, dilation, groups) == (1, 0, 1, 1) 
+        assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
         batch_size = input_lp.size(0)
         kernel_size = np.array(weight_lp.size()[-2:]).astype(np.int)
         input_size = np.array(input_lp.size()[-2:]).astype(np.int)
         output_size = np.floor((input_size + 2 * padding - dilation *
-                                (kernel_size - 1) - 1) / stride + 1).astype(np.int)
+                                (kernel_size - 1) - 1) / stride + 1).astype(
+                                    np.int)
         kernel_size = kernel_size.tolist()
         input_size = input_size.tolist()
         output_size = output_size.tolist()
@@ -88,7 +90,8 @@ class BitCenterConv2DFunction(Function):
             + conv2d(input_lp_unf + input_delta_unf, weight_delta)
         # print(output.size(), output_size, kernel_size, input_lp.size(), weight_lp.size())
         channel_out = weight_lp.size(0)
-        output = output.transpose(1, 2).view(batch_size, channel_out, *output_size)
+        output = output.transpose(1, 2).view(batch_size, channel_out,
+                                             *output_size)
         if bias_delta is not None:
             output = output + bias_delta.view(1, -1, 1, 1).expand_as(output)
         return output
@@ -97,19 +100,21 @@ class BitCenterConv2DFunction(Function):
     def backward(ctx, grad_output):
         '''
         In this function, suffix represent the results from torch unfold style im2col op
-    	'''
+        '''
         # TODO extend to accommodate more configs for stride, padding, dilation, groups
         input_lp_unf, input_delta_unf, output_grad_lp, \
             weight_lp, weight_delta, bias_lp, bias_delta = ctx.saved_tensors
         stride, padding, dilation, groups = ctx.hyperparam
-        assert (stride, padding, dilation, groups) == (1, 0, 1, 1) 
+        assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
         batch_size, channel_out, w_out, h_out = list(grad_output.size())
         channel_in = weight_lp.size(1)
-        kernel_size = weight_lp.size()[-2:] 
+        kernel_size = weight_lp.size()[-2:]
         assert channel_out == weight_lp.size(0)
         # reshape output grad for further computation
-        grad_output_reshape = grad_output.permute(0, 2, 3, 1).view(batch_size, -1, channel_out)
-        output_grad_lp_reshape = output_grad_lp.permute(0, 2, 3, 1).view(batch_size, -1, channel_out)
+        grad_output_reshape = grad_output.permute(0, 2, 3, 1).view(
+            batch_size, -1, channel_out)
+        output_grad_lp_reshape = output_grad_lp.permute(0, 2, 3, 1).view(
+            batch_size, -1, channel_out)
         grad_input_lp = None
         grad_input_delta = \
             get_grad_input(grad_output, (weight_lp + weight_delta)) \
@@ -170,19 +175,3 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
         self.cuda()
         self.reset_parameters_bit_center()
         self.register_backward_hook(self.update_grad_output_cache)
-
-    def update_grad_output_cache(self, self1, input, output):
-        # use duplicated self to adapt to the pytorch API requirement
-        # as this is a class member function.
-        # TODO: consider merge this function into the base BitCenterLayer
-        # class. Currently it is not doable because of the behavior described
-        # in BitCenterLinear layer.
-        if self.do_offset:
-            self.grad_output_cache[self.grad_cache_iter:min(
-                self.grad_cache_iter +
-                output[0].size()[0], self.n_train_sample)].data.copy_(
-                    self.cast_func(output[0].cpu()))
-            self.grad_cache_iter = (
-                self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
-        self.input_grad_for_test = input[0]
-

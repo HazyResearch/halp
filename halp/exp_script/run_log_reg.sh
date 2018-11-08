@@ -63,7 +63,7 @@
 
 # timing experiments
 # python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='sgd' --rounding='void' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp32_timing_batch_1.log
-# python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='sgd' --rounding='void' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp32_timing_batch_100.log
+# python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='sgd' --rounding='void' -T=600 --cuda 2>&1 | tee log/ca_lp_sgd_fp32_timing_batch_100.log
 
 # python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp16_timing_batch_1.log
 # python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp16_timing_batch_100.log

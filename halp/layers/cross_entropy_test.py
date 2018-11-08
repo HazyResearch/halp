@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 from torch.nn import Parameter
-from halp.layers.linear_layer import BitCenterLinear, bit_center_linear
+from torch.autograd import Variable
+from halp.layers.cross_entropy import BitCenterCrossEntropy
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 from unittest import TestCase
 from halp.utils.test_utils import HalpTest
@@ -13,9 +14,9 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
+class TestBitCenterCrossEntropyLayer(TestBitCenterLayer, TestCase):
     '''
-    Test the functionality of bit centering linear layers
+    Test the functionality of bit centering cross entropy layers
     '''
 
     def get_config(self, type="grad_check"):
@@ -46,43 +47,16 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
                       n_train_sample,
                       dim_in,
                       dim_out,
-                      bias=False,
+                      bias=None,
                       cast_func=void_cast_func,
                       do_double=True,
                       seed=0,
                       batch_size=1):
-        layer = BitCenterLinear(
-            in_features=dim_in,
-            out_features=dim_out,
-            bias=bias,
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
-        # Note do_double = setup layer for gradient check, otherwise, it is for checking
-        # the tensor properties
-        self.target_dtype = None
+        # note the argument dim_in, dim_out, bias function are dummy, we use it to adapt to the test API interface
+        layer = BitCenterCrossEntropy(
+            cast_func=cast_func, n_train_sample=n_train_sample)
         if do_double:
             layer.double()
-            # input_delta = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
-            # input_fp = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
-            layer.weight.data.copy_(
-                torch.randn(
-                    dim_out, dim_in, dtype=torch.double,
-                    requires_grad=False).cuda())
-            layer.weight_lp.data.copy_(layer.weight.data)
-            layer.weight_delta.data.copy_(
-                torch.randn(
-                    dim_out, dim_in, dtype=torch.double,
-                    requires_grad=True).cuda())
-            if bias:
-                layer.bias.data.copy_(
-                    torch.randn(
-                        dim_out, dtype=torch.double,
-                        requires_grad=True).cuda())
-                layer.bias_lp.data.copy_(layer.bias.data)
-                layer.bias_delta.data.copy_(
-                    torch.randn(
-                        dim_out, dtype=torch.double,
-                        requires_grad=True).cuda())
         layer.cuda()
         return layer
 
@@ -90,7 +64,7 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
                   n_train_sample,
                   dim_in,
                   dim_out,
-                  bias,
+                  bias=None,
                   cast_func=void_cast_func,
                   do_double=True,
                   seed=0,
@@ -98,8 +72,7 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-        self.target_dtype = None
-
+        self.target_dtype = torch.long
         if do_double:
             input_delta = Parameter(
                 torch.randn(n_train_sample, dim_in, dtype=torch.double).cuda(),
@@ -116,11 +89,55 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
             input_fp = Parameter(
                 torch.randn(n_train_sample, dim_in, dtype=torch.float).cuda(),
                 requires_grad=True)
-        return [
-            input_fp,
-        ], [
-            input_delta,
-        ]
+
+        # if this layer need label input
+        target = torch.LongTensor(n_train_sample).random_(dim_in).cuda()
+        return [input_fp, target], [input_delta, target]
+
+    def check_layer_param_and_cache(self, layer):
+        t_list = [(layer.input_cache, torch.half, False, False),
+                  (layer.grad_output_cache, torch.half, False, False)]
+        self.CheckLayerTensorProperty(t_list)
+
+    def get_analytical_grad(self, layer, input_fp, input_delta):
+        layer.set_mode(do_offset=True)
+        grad_list = []
+        output = layer(*input_fp)
+        output.backward()
+        grad_input_fp = input_fp[0].grad.clone()
+
+        layer.set_mode(do_offset=False)
+        loss_lp = output_lp = layer(*input_delta)
+        loss_lp.backward()
+        grad_input_delta = input_delta[0].grad.clone()
+        input_grad = grad_input_fp + grad_input_delta
+        grad_list.append(input_grad)
+        # note the output_lp is the full loss at the input_offset + input_delta
+        return output_lp, grad_list
+
+    def get_numerical_grad(self, layer, input_fp, input_delta, perturb_eps):
+        # get numerical finite difference
+        layer.set_mode(do_offset=True)
+
+        def get_loss(input):
+            loss = output = layer(*input)
+            return loss
+
+        grad_list = []
+        layer.set_mode(do_offset=True)
+        input = []
+        for i, (x, y) in enumerate(zip(input_fp, input_delta)):
+            if i != len(input_fp) - 1:
+                input.append(x + y)
+            else:
+                np.testing.assert_array_equal(x.data.cpu().numpy(),
+                                              y.data.cpu().numpy())
+                input.append(x)
+        output_final = layer(*input)
+        num_input_grad = get_numerical_jacobian(
+            get_loss, input, target=input[0], eps=perturb_eps)
+        grad_list.append(num_input_grad.clone())
+        return output_final, grad_list
 
 
 if __name__ == "__main__":
