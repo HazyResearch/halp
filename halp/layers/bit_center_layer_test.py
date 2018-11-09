@@ -138,7 +138,7 @@ class TestBitCenterLayer(HalpTest):
         torch.manual_seed(0)
         torch.cuda.manual_seed_all(0)
         for bias in [True, False]:
-            for i in range(10):
+            for i in range(5):
                 config = self.get_config(type="grad_check")
                 config["bias"] = bias
                 config["do_double"] = True

@@ -14,13 +14,6 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
-# helper functions for backward computation of bit center conv 2d:
-# we define these function to get gradient wrt input and weights
-get_grad_input = lambda grad_out_reshape, weight: \
-    F.conv_transpose2d(grad_out_reshape, weight, bias=None)
-get_grad_weight = lambda input_unf, grad_output_reshape: \
-    torch.sum(torch.bmm(input_unf, grad_output_reshape), dim=0)
-
 
 class BitCenterConv2DFunction(Function):
     """
@@ -67,22 +60,34 @@ class BitCenterConv2DFunction(Function):
         # suffix delta means the real low precision part of the model representation
         # output_grad_lp is only for backward function, but we need to keep it in ctx
         # for backward function to access it.
-        # TODO: extend to accommodate different stride, padding, dilation, groups
-        assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
+        # TODO: extend to accommodate different dilation, groups
+        # assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
         batch_size = input_lp.size(0)
-        kernel_size = np.array(weight_lp.size()[-2:]).astype(np.int)
-        input_size = np.array(input_lp.size()[-2:]).astype(np.int)
-        output_size = np.floor((input_size + 2 * padding - dilation *
-                                (kernel_size - 1) - 1) / stride + 1).astype(
-                                    np.int)
-        kernel_size = kernel_size.tolist()
-        input_size = input_size.tolist()
-        output_size = output_size.tolist()
-        input_lp_unf = F.unfold(input_lp, kernel_size)
-        input_delta_unf = F.unfold(input_delta, kernel_size)
+        if (dilation != (1, 1)) or (groups != 1):
+            raise Exception(
+                "Dillation and groups are not fully supported yet in bc conv.")
+        kernel_size = list(weight_lp.size()[-2:])
+        input_size = list(input_lp.size()[-2:])
+        output_size = [ \
+            floor((input_size[0] + 2 * padding[0] - dilation[0] *
+             (kernel_size[0] - 1) - 1) / stride[0] + 1),
+            floor((input_size[1] + 2 * padding[1] - dilation[1] *
+             (kernel_size[1] - 1) - 1) / stride[1] + 1)]
+        input_lp_unf = F.unfold(
+            input_lp,
+            kernel_size,
+            dilation=dilation,
+            padding=padding,
+            stride=stride)
+        input_delta_unf = F.unfold(
+            input_delta,
+            kernel_size,
+            dilation=dilation,
+            padding=padding,
+            stride=stride)
         ctx.save_for_backward(input_lp_unf, input_delta_unf, output_grad_lp,
                               weight_lp, weight_delta, bias_lp, bias_delta)
-        ctx.hyperparam = (stride, padding, dilation, groups)
+        ctx.hyperparam = (stride, padding, dilation, groups, input_lp.shape)
         conv2d = lambda input_unf, weight: \
             input_unf.transpose(1, 2).matmul(
             weight.permute(1, 2, 3, 0).view(-1, weight.size(0)))
@@ -101,12 +106,13 @@ class BitCenterConv2DFunction(Function):
         '''
         In this function, suffix represent the results from torch unfold style im2col op
         '''
-        # TODO extend to accommodate more configs for stride, padding, dilation, groups
+        # TODO extend to accommodate more configs for dilation, groups
         input_lp_unf, input_delta_unf, output_grad_lp, \
             weight_lp, weight_delta, bias_lp, bias_delta = ctx.saved_tensors
-        stride, padding, dilation, groups = ctx.hyperparam
-        assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
+        stride, padding, dilation, groups, input_shape = ctx.hyperparam
+        # assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
         batch_size, channel_out, w_out, h_out = list(grad_output.size())
+        w_in, h_in = input_shape[-2:]
         channel_in = weight_lp.size(1)
         kernel_size = weight_lp.size()[-2:]
         assert channel_out == weight_lp.size(0)
@@ -115,6 +121,21 @@ class BitCenterConv2DFunction(Function):
             batch_size, -1, channel_out)
         output_grad_lp_reshape = output_grad_lp.permute(0, 2, 3, 1).view(
             batch_size, -1, channel_out)
+        # helper functions for backward computation of bit center conv 2d:
+        # we define these function to get gradient wrt input and weights
+        # in the get_grad_input helper, padding is the padding in the
+        # original convolution (the transpose is the inverse deconvolution op)
+        # the output_padding controls the output when stride > 0. It adds the
+        # ignored rows back to the output of the deconv op; this resolves
+        # disambiguity in the shape of the output of deconv
+        output_padding = [\
+            w_in - ((w_out - 1) * stride[0] + kernel_size[0] - 2 * padding[0]),
+            h_in - ((h_out - 1) * stride[1] + kernel_size[1] - 2 * padding[1])]
+        get_grad_input = lambda grad_out_reshape, weight: \
+            F.conv_transpose2d(grad_out_reshape, weight, bias=None, stride=stride, padding=padding, output_padding=output_padding)
+        get_grad_weight = lambda input_unf, grad_output_reshape: \
+            torch.sum(torch.bmm(input_unf, grad_output_reshape), dim=0)
+
         grad_input_lp = None
         grad_input_delta = \
             get_grad_input(grad_output, (weight_lp + weight_delta)) \
@@ -175,3 +196,36 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
         self.cuda()
         self.reset_parameters_bit_center()
         self.register_backward_hook(self.update_grad_output_cache)
+
+    def forward_fp(self, input):
+        if self.input_cache is None:
+            self.input_cache = self.setup_cache(input)
+            self.cache_iter = 0
+        output = self.fp_func(input, self.weight, self.bias, self.stride,
+                              self.padding, self.dilation, self.groups)
+        if self.grad_output_cache is None:
+            self.grad_output_cache = self.setup_cache(output)
+            self.grad_cache_iter = 0
+        self.update_input_cache(input)
+        return output
+
+    def forward_lp(self, input):
+        # Need to test do_offset mode whether gradient is updated properly
+        input_lp = self.input_cache[self.cache_iter:(
+            self.cache_iter + input.size(0))].cuda()
+        grad_output_lp = \
+            self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
+        input_delta = input
+        weight_lp = self.weight_lp
+        weight_delta = self.weight_delta
+        bias_lp = self.bias_lp
+        bias_delta = self.bias_delta
+        output = self.lp_func(input_delta, input_lp, grad_output_lp,
+                              weight_delta, weight_lp, bias_delta, bias_lp,
+                              self.stride, self.padding, self.dilation,
+                              self.groups)
+        self.cache_iter = (
+            self.cache_iter + input.size(0)) % self.n_train_sample
+        self.grad_cache_iter = (
+            self.grad_cache_iter + input.size(0)) % self.n_train_sample
+        return output

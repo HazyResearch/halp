@@ -21,20 +21,21 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
 
     def get_config(self, type="grad_check"):
         config = {}
-        config["input_w"] = 4
-        config["input_h"] = 5
-        config["kernel_size"] = (3, 3)
-        config["stride"] = 1
-        config["padding"] = 0
+        # this config can test for padding != 0 and stride > 1 cases
+        config["input_w"] = 15
+        config["input_h"] = 8
+        config["kernel_size"] = (5, 5)
+        config["stride"] = 3
+        config["padding"] = 2
         if type == "grad_check":
-            config["n_train_sample"] = 35
-            config["dim_in"] = 8
-            config["dim_out"] = 16
+            config["n_train_sample"] = 6
+            config["dim_in"] = 4
+            config["dim_out"] = 8
             config["bias"] = True
             config["cast_func"] = void_cast_func
             config["do_double"] = True
             config["seed"] = 0
-            config["batch_size"] = 35
+            config["batch_size"] = 6
         elif type == "fw_bw_proc":
             config["n_train_sample"] = 98
             config["dim_in"] = 13

@@ -39,6 +39,8 @@ class BitCenterMaxPool2DFunction(Function):
             return_indices=True)
         ctx.save_for_backward(grad_output_lp, indices_full, indices_lp)
         ctx.hyperparam = (kernel_size, stride, padding, input_full.shape)
+        if type(padding) is list:
+            raise Exception("tuple based padding ")
         return output_full - output_lp
 
     @staticmethod
@@ -51,7 +53,7 @@ class BitCenterMaxPool2DFunction(Function):
             indices_full,
             kernel_size=kernel_size,
             stride=stride,
-            padding=padding, 
+            padding=padding,
             output_size=input_shape)
         grad_input_lp = F.max_unpool2d(
             grad_output_lp,
@@ -60,15 +62,11 @@ class BitCenterMaxPool2DFunction(Function):
             stride=stride,
             padding=padding,
             output_size=input_shape)
-        grad_input_delta_tmp = grad_input_full - grad_input_lp
-        if input_shape != grad_input_delta_tmp.shape:
-            # pad grad input edges with 0
-            input_w = grad_input_delta_tmp.shape[-2]
-            input_h = grad_input_delta_tmp.shape[-1]
-            grad_input_delta = torch.zeros(input_shape, dtype=grad_input_delta_tmp.dtype, device=grad_input_delta_tmp.device)
-            grad_input_delta[:,:, 0:input_w, 0:input_h] = grad_input_delta_tmp
-        else:
-            grad_input_delta = grad_input_delta_tmp
+        grad_input_delta = grad_input_full - grad_input_lp
+
+        # note here pytorch max pool layer set stride = kernel size if not specified
+        if (stride != kernel_size) or (padding is not 0):
+            raise Exception("stride and padding are not fully supported yet!")
         grad_input_lp = None
         grad_grad_output_lp = None
         grad_kernel_size = None

@@ -3,6 +3,7 @@ python -m unittest layers/linear_layer_test.py
 python -m unittest layers/cross_entropy_test.py
 python -m unittest layers/conv_layer_test.py
 python -m unittest layers/relu_layer_test.py
+python -m unittest layers/max_pool_layer_test.py
 python -m unittest utils/utils.py
 
 echo "toy sgd example for bc sgd, sgd, lp sgd behavior comparison, expect the numbers to be very close"

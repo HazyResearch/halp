@@ -23,17 +23,6 @@ class TestBitCenterMaxPool2DLayer(TestBitCenterLayer, TestCase):
     def get_config(self, type="grad_check"):
         config = {}
         if type == "grad_check":
-            # config["n_train_sample"] = 1
-            # config["channel_in"] = 1
-            # config["w_in"] = 3
-            # config["h_in"] = 3
-            # config["kernel_size"] = (2, 2)
-            # config["stride"] = None
-            # config["padding"] = 0
-            # config["cast_func"] = void_cast_func
-            # config["do_double"] = True
-            # config["seed"] = 0
-            # config["batch_size"] = 1
             config["n_train_sample"] = 35
             config["channel_in"] = 17
             config["w_in"] = 24
@@ -155,7 +144,10 @@ class TestBitCenterMaxPool2DLayer(TestBitCenterLayer, TestCase):
                            target=None):
         grad_list = []
         layer.set_mode(do_offset=True)
-        input_final = [Parameter(x + y, requires_grad=True) for x, y in zip(input_fp, input_delta)]
+        input_final = [
+            Parameter(x + y, requires_grad=True)
+            for x, y in zip(input_fp, input_delta)
+        ]
         output_final = layer(*input_final)
         loss = 0.5 * torch.sum(output_final**2)
         loss.backward()
