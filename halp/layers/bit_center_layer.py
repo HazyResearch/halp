@@ -25,6 +25,7 @@ class BitCenterModule(nn.Module):
         self.do_offset = do_offset
         self.cache_iter = cache_iter
         for child in self.children():
+            print 
             if isinstance(child, BitCenterModule):
                 child.set_mode(do_offset, cache_iter)
             else:

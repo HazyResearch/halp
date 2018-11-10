@@ -43,7 +43,7 @@ class BitCenterReLU(BitCenterLayer, nn.ReLU):
             self,
             fp_functional=F.relu,
             lp_functional=bit_center_relu,
-            bias=None,
+            bias=None, # TODO this is dummy, consider remove after the test is refactored properly
             cast_func=cast_func,
             n_train_sample=n_train_sample)
         nn.ReLU.__init__(self)

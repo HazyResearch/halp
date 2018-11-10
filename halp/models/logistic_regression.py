@@ -2,8 +2,6 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 
-import halp.utils.utils
-
 from halp.utils.utils import single_to_half_det, single_to_half_stoc, void_cast_func
 from halp.layers.bit_center_layer import BitCenterModule
 from halp.layers.linear_layer import BitCenterLinear

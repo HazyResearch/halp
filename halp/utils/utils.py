@@ -79,6 +79,22 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
 
+def copy_layer_weights(layer_old, layer_new):
+    layer_new.weight.data.copy_(layer_old.weight)
+    if layer_new.bias is not None:
+        layer_new.bias.data.copy_(layer_old.bias)
+    return layer_new
+
+
+def copy_model_weights(model_old, model_new):
+    # model old is the native pytorch model, while the model_new is a model using our implementation
+    for name, param in model_old.named_parameters():
+        old_param = get_recur_attr(model_old, name.split("."))
+        new_param = get_recur_attr(model_new, name.split("."))
+        new_param.data.copy_(old_param.data)
+        # print("test ", torch.sum(new_param**2), torch.sum(old_param**2))
+
+
 class UtilityTest(TestCase):
     def test_single_to_half_stoc(self):
         # assert overflow in single precision level is properly handled
@@ -139,6 +155,7 @@ class UtilityTest(TestCase):
 
     def test_single_to_half_det(self):
         pass
+
 
 
 if __name__ == "__main__":
