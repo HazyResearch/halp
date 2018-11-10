@@ -1,5 +1,6 @@
 import copy
 import argparse
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ from halp.utils.utils import single_to_half_det, single_to_half_stoc
 from halp.utils.train_utils import evaluate_acc
 from halp.utils.train_utils import train_non_bit_center_optimizer
 from halp.utils.train_utils import train_bit_center_optimizer
+from halp.utils.mnist_data_utils import get_mnist_data_loader
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -59,19 +61,15 @@ parser.add_argument("--rounding", default="near", type=str,
                     choices=["near", "stoc", "void"],
                     help="Support nearest (near) and stochastic (stoc) rounding.")
 args = parser.parse_args()
-
 utils.set_seed(args.seed)
 
-X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
+train_loader, val_loader, input_shape = get_mnist_data_loader(
+    onehot=False, debug_test=args.debug_test, batch_size=args.batch_size)
 
 if args.debug_test:
-    debug_data_size = 3
-    X_train = X_train[0:debug_data_size]
-    X_val = X_val[0:debug_data_size]
-    Y_train = Y_train[0:debug_data_size]
-    Y_val = Y_val[0:debug_data_size]
     args.cast_func = void_cast_func
-    args.T = X_train.shape[0]    
+    args.T = len(train_loader)
+    args.batch_size = 1    
 elif args.rounding == "near":
     args.cast_func = single_to_half_det
 elif args.rounding == "stoc":
@@ -82,20 +80,8 @@ else:
     raise Exception("The rounding method is not supported!")
 
 # TODO resolve this for trainin procedure and avoid this check
-if X_train.shape[0] != args.batch_size * args.T:
+if len(train_loader) != args.batch_size * args.T:
     raise Exception("Currently not supporting settings other than T = 1 epoch, please resolve")
-
-X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
-Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
-
-train_data = \
-        torch.utils.data.TensorDataset(X_train, Y_train)
-train_loader = torch.utils.data.DataLoader(
-    train_data, batch_size=args.batch_size, shuffle=False)
-val_data = \
-    torch.utils.data.TensorDataset(X_val, Y_val)
-val_loader = torch.utils.data.DataLoader(
-    val_data, batch_size=args.batch_size, shuffle=False)
 
 # determine the dtype
 if args.solver.startswith("bc-"):
@@ -107,12 +93,12 @@ else:
 
 # note reg_lambda is dummy here, the regularizer is handled by the optimizer
 model = LogisticRegression(
-    input_dim=X_train.shape[1],
+    input_dim=input_shape[1],
     n_class=args.n_classes,
     reg_lambda=args.reg,
     dtype=args.dtype,
     cast_func=args.cast_func,
-    n_train_sample=X_train.shape[0])
+    n_train_sample=len(train_loader))
 if args.cuda:
     model.cuda()
 
@@ -142,7 +128,7 @@ elif args.solver == "bc-sgd":
         params_name=params_name,
         lr=args.alpha,
         weight_decay=args.reg,
-        n_train_sample=X_train.size(0),
+        n_train_sample=len(train_loader),
         cast_func=args.cast_func,
         minibatch_size=args.batch_size,
         T=args.T)
@@ -152,7 +138,7 @@ elif args.solver == "bc-svrg":
         params_name=params_name,
         lr=args.alpha,
         weight_decay=args.reg,
-        n_train_sample=X_train.size(0),
+        n_train_sample=len(train_loader),
         cast_func=args.cast_func,
         minibatch_size=args.batch_size,
         T=args.T)

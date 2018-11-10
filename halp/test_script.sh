@@ -6,7 +6,6 @@ python -m unittest layers/relu_layer_test.py
 python -m unittest layers/max_pool_layer_test.py
 python -m unittest models/logistic_regression_test.py
 python -m unittest models/lenet_test.py
-python -m unittest models/lenet_test.py
 python -m unittest utils/utils.py
 
 echo "toy sgd example for bc sgd, sgd, lp sgd behavior comparison, expect the numbers to be very close"

@@ -2,6 +2,7 @@ import gzip
 import os
 from os import path
 import numpy as np
+import torch
 
 import sys
 if sys.version_info.major < 3:
@@ -93,3 +94,24 @@ def load_mnist(ntrain=60000, ntest=10000, onehot=True):
         teY = np.asarray(teY)
 
     return trX, teX, trY, teY
+
+def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1):
+    X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
+    if debug_test:
+        debug_data_size = 3
+        X_train = X_train[0:debug_data_size]
+        X_val = X_val[0:debug_data_size]
+        Y_train = Y_train[0:debug_data_size]
+        Y_val = Y_val[0:debug_data_size]
+    X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
+    Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
+    train_data = \
+        torch.utils.data.TensorDataset(X_train, Y_train)
+    train_loader = torch.utils.data.DataLoader(
+        train_data, batch_size=batch_size, shuffle=False)
+    val_data = \
+        torch.utils.data.TensorDataset(X_val, Y_val)
+    val_loader = torch.utils.data.DataLoader(
+        val_data, batch_size=batch_size, shuffle=False)
+    input_shape = (batch_size,) + X_train.shape[1:]
+    return train_loader, val_loader, input_shape

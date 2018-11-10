@@ -25,22 +25,9 @@ class LeNet_PyTorch(nn.Module):
 
     def forward(self, x):
         out = F.relu(self.conv1(x))
-
-        # print("ckpt native output ", torch.sum(self.conv1.weight**2))
-
-
         out = F.max_pool2d(out, 2)
-
-        # print("ckpt native output ", torch.sum(out**2))
-
-
         out = F.relu(self.conv2(out))
         out = F.max_pool2d(out, 2)
-
-
-        # print("ckpt native output ", torch.sum(out**2))
-
-
         out = out.view(out.size(0), -1)
         out = F.relu(self.fc1(out))
         out = F.relu(self.fc2(out))
@@ -117,11 +104,6 @@ class LeNet(BitCenterModule):
         if dtype == "bc":
             pass
         elif dtype == "fp":
-            # def copy_weights(layer_old, layer_new):
-            #     layer_new.weight.data.copy_(layer_old.weight)
-            #     if layer_new.bias is not None:
-            #         layer_new.bias.data.copy_(layer_old.bias)
-            #     return layer_new
             self.conv1 = copy_layer_weights(self.conv1, nn.Conv2d(3, 6, 5))
             self.conv2 = copy_layer_weights(self.conv2, nn.Conv2d(6, 16, 5))
             self.fc1   = copy_layer_weights(self.fc1, nn.Linear(16*5*5, 120))
@@ -144,17 +126,8 @@ class LeNet(BitCenterModule):
     def forward(self, x, y, test=False):
         out = self.relu1(self.conv1(x))
         out = self.max_pool1(out)
-
-        # print("ckpt non native output ", torch.sum(out**2))
-
-
         out = self.relu2(self.conv2(out))
         out = self.max_pool2(out)
-
-
-        # print("ckpt native output ", torch.sum(out**2))
-
-
         out = out.view(out.size(0), -1)
         out = self.relu3(self.fc1(out))
         out = self.relu4(self.fc2(out))
