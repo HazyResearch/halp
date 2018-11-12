@@ -15,8 +15,8 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
             X, Y = X.cuda(), Y.cuda()
         if dtype == "lp":
             X = model.cast_func(X)
-        if len(list(X.size())) != 2:
-            X = X.view(X.size(0), -1)
+        # if len(list(X.size())) != 2:
+        #     X = X.view(X.size(0), -1)
         pred, output = model.predict(X)
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
@@ -53,11 +53,22 @@ def train_non_bit_center_optimizer(model,
                 X = optimizer.cast_func(X)
             if dtype == "bc":
                 raise Exception("This function can only run non-bc optimizers")
-            if len(list(X.size())) != 2:
-                X = X.view(X.size(0), -1)
+            # if len(list(X.size())) != 2:
+            #     X = X.view(X.size(0), -1)
             optimizer.zero_grad()
-            train_loss = model(X, Y)
+            train_loss = model(X.double(), Y)
             train_loss.backward()
+
+            # for name, param in model.named_parameters():
+            #     # print("grad magnitude ", 1.0**2*torch.sum((param.grad.data + param.data)**2).item(), name, param.dtype)
+            #     # print("grad magnitude ", name, 10.0**2*torch.sum((param.grad.data + param.data)**2).item(), 
+            #     #     10.0**2*torch.sum(param.grad.data**2).item(),
+            #     #     10.0**2*torch.sum(param.data**2).item())
+            #     print("grad magnitude ", name, 
+            #         10.0**2*torch.sum(param.grad.data**2).item(),
+            #         torch.sum(param.data**2).item())
+
+
             if optimizer.__class__.__name__ == "SVRG":
 
                 def svrg_closure(data=X, target=Y):
@@ -68,8 +79,8 @@ def train_non_bit_center_optimizer(model,
                         data = optimizer.cast_func(data)
                     if dtype == "bc":
                         raise Exception("This function can only run non-bc optimizers")
-                    if len(list(data.size())) != 2:
-                        data = data.view(data.size(0), -1)
+                    # if len(list(data.size())) != 2:
+                    #     data = data.view(data.size(0), -1)
                     loss = model(data, target)
                     loss.backward()
                     return loss
@@ -78,10 +89,11 @@ def train_non_bit_center_optimizer(model,
             else:
                 optimizer.step()
             train_loss_list.append(train_loss.item())
-            # print(epoch_id, train_loss.item())
+            # if i < 100:
+            print(epoch_id, i, train_loss.item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
-        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
+        # eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
     return train_loss_list, eval_metric_list
 
 
@@ -109,31 +121,45 @@ def train_bit_center_optimizer(model,
                     optimizer.zero_grad()
                     if use_cuda:
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
-                    loss_fp = model(X_fp, Y_fp)
+                    loss_fp = model(X_fp.double(), Y_fp)
                     loss_fp.backward()
+
+                    # for test_name, test in model.named_parameters():
+                    #     if test.grad is not None:
+                    #         print("fp steps ", test_name, torch.sum(test.grad**2).item())
+                    
+
                     optimizer.step_fp()
+                    if j < 3:
+                        print("fp steps ", j, loss_fp.item())
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
             # note here X is the input delta. It is suppose to be zero.
             X = optimizer.cast_func(X).zero_()
+            # if i == 0:
+            #     for name, p in model.named_parameters():
+            #         print("check out delta values ", torch.sum(p**2).item(), name)
+
+
             if dtype != "bc":
                 raise Exception(
                     "This training function does not support dtype other than bc"
                 )
             optimizer.zero_grad()
-            train_loss = model(X, Y)
+            train_loss = model(X.double(), Y)
             train_loss.backward()
             optimizer.step_lp()
             train_loss_list.append(train_loss.item())
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
-            # print(epoch_id, i, train_loss.item())
+            # if i < 100:
+            print(epoch_id, i, train_loss.item())
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)
-        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype=dtype))
+        # eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype=dtype))
         optimizer.on_end_fp_steps(model)
     return train_loss_list, eval_metric_list

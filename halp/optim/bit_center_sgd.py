@@ -77,6 +77,9 @@ class BitCenterOptim(SGD):
                     continue
                 if weight_decay != 0.0:
                     p.grad.data.add_(weight_decay, p.data)
+
+                # print("double ", torch.sum(p.grad**2).item())
+
                 self.update_single_grad_cache(p.grad * param_group["lr"], cache)
 
     def get_single_grad_offset(self, cache, cache_iter=0):
@@ -92,22 +95,47 @@ class BitCenterOptim(SGD):
                     continue
                 cache = self.grad_cache[p_name.split("_delta")[0]]
                 grad_offset = self.get_single_grad_offset(cache)
-                if weight_decay.item() != 0.0:
-                    # add the weight decay from the weight_lp style variable
-                    # (the one casted from the full precision weight)
-                    lp_var_found=False
+
+                # print("check insdie ", p_name,  
+                #     torch.sum(((lr.item() * p.grad.data) + weight_decay.item() * p.data + grad_offset.cuda())**2).item(), torch.sum(grad_offset**2).item())
+                # print("grad overall ", p_name,  
+                #     torch.sum(((lr.item() * p.grad.data) + weight_decay.item() * p.data + grad_offset.cuda())**2).item())
+
+                if 1:
+                # if weight_decay.item() != 0.0:
+                    p.grad.data.add_(weight_decay.item(), p.data)
+
+                    # # add the weight decay from the weight_lp style variable
+                    # # (the one casted from the full precision weight)
+                    # lp_var_found=False
+                    # print("test grad magnitude pre", p_name, torch.sum(p.grad.data**2).item(), torch.sum(p.data**2).item())
+
                     for p_lp, p_lp_name in zip(param_group["params"], param_group["params_name"]):
                         if p_name.replace("_delta", "_lp") == p_lp_name:
                             lp_var_found = True
-                            p.grad.data.add_(weight_decay.item(), p_lp.data + p.data)
-                            # add weight decay from the delta variable
-                    if lp_var_found == False:
-                        raise Exception("The lp var is not found for weight decay")
+
+                            # print("pre test ", grad_offset.dtype, p.grad.data.dtype)
+                           
+                            # print("param over all ", p_name, torch.sum((p + p_lp)**2).item())
+                           
+                            # print("test grad magnitude pre2", p_name, torch.sum((p.data + p_lp.data)**2).item(),
+                            #     torch.sum((p.grad.data + grad_offset.double().cuda())**2).item(), torch.sum(grad_offset**2).item(), torch.sum(p.grad.data**2).item())
+
+
+
+                    #         p.grad.data.add_(weight_decay.item(), p.data)
+
+                    #         # add weight decay from the delta variable
+                    # if lp_var_found == False:
+                    #     raise Exception("The lp var is not found for weight decay")
                 move = lr.item() * p.grad.data 
                 if p.is_cuda:   
-                   move.add_(grad_offset.cuda())
+                   move.add_(grad_offset.cuda().double())
                 else:
-                   move.add_(grad_offset)
+                   move.add_(grad_offset.double())
+
+                # print("test grad magnitude", torch.sum(move**2).item(), p_name, move.dtype, torch.sum(p.grad.data**2).item())
+
                 p.data.add_(-move)
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
@@ -123,7 +151,7 @@ class BitCenterOptim(SGD):
             for p, p_name in zip(param_group["params"], param_group["params_name"]):
                 if not p_name.endswith("_delta"):
                     continue
-                # search for the
+                # update the offset variable and its lp version
                 corr_found = False 
                 for param_offset_group in self.param_groups:
                     for p_offset, p_offset_name in zip(param_offset_group["params"], param_offset_group["params_name"]):
@@ -131,7 +159,18 @@ class BitCenterOptim(SGD):
                             # p_offset = p_offset + p.type(p_offset.dtype)
                             p_offset.data.add_(p.data.type(p_offset.dtype))
                             corr_found = True
-                if corr_found == False:
+                            # update the offset lp variable
+                            lp_corr_found = False
+                            for param_offset_lp_group in self.param_groups:
+                                for p_offset_lp, p_offset_lp_name in zip(param_offset_group["params"], param_offset_group["params_name"]):
+                                    if p_offset_lp_name == p_name.split("_delta")[0] + "_lp":
+                                    # p_offset = p_offset + p.type(p_offset.dtype)
+                                        # print("DOUBLE CHECK ", p_offset.dtype, p_offset.shape, p_offset_lp.dtype, p_offset_lp.shape, p)
+                                        # print("copy for p_name", p_name)
+                                        p_offset_lp.data.copy_(self.cast_func(p_offset))
+                                        lp_corr_found = True
+
+                if corr_found == False or lp_corr_found == False:
                     logger.error("Can not find offset var for ", p_name)
                     raise Exception("Can not find offset var for ", p_name)
 
@@ -190,7 +229,7 @@ class BitCenterSGD(BitCenterOptim):
 
     def setup_single_grad_cache(self, grad_shape):
         cache_shape = [self.n_minibatch_per_epoch] + grad_shape
-        return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu()
+        return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu().double()
 
     def update_single_grad_cache(self, grad, cache):
         # the input grad is actually grad * lr in function update_grad_cache

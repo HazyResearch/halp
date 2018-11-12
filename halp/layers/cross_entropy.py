@@ -28,7 +28,7 @@ class BitCenterCrossEntropyLPFunction(Function):
         # grad_z_{i, j} = 1/m\sum_i 1(y_i = j) - P(y_i = j)
         input_lp, input_delta, target, grad_offset = ctx.saved_tensors
         assert input_lp.size(0) == target.numel()
-        prob = F.softmax(input_lp + input_delta, dim=1)
+        prob = F.softmax(input_lp + input_delta - torch.max(input_lp + input_delta), dim=1)
         sample_idx = torch.LongTensor(np.arange(input_lp.size(0)))
         minibatch_size = input_delta.size(0)
         grad_input_lp = None
@@ -40,6 +40,9 @@ class BitCenterCrossEntropyLPFunction(Function):
         grad_input_delta.add_(-grad_offset)
         grad_target = None
         grad_grad_offset = None
+
+        # print("entropy back value ", torch.sum(grad_input_delta**2).item())
+
         return grad_input_delta, grad_input_lp, grad_target, grad_grad_offset
 
 

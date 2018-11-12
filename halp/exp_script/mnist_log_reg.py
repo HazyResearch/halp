@@ -3,6 +3,7 @@ import argparse
 import math
 import numpy as np
 import torch
+torch.backends.cudnn.deterministic=True
 import torch.nn as nn
 import torch.utils.data
 from torch.optim import SGD
@@ -10,7 +11,9 @@ from halp.optim.bit_center_sgd import BitCenterSGD
 from halp.optim.bit_center_svrg import BitCenterSVRG
 from halp.optim.svrg import SVRG
 from halp.models.logistic_regression import LogisticRegression
-from halp.utils.mnist_data_utils import load_mnist
+from halp.models.lenet import LeNet
+from halp.utils.mnist_data_utils import get_mnist_data_loader
+from halp.utils.cifar_data_utils import get_cifar10_data_loader
 from halp.utils import utils
 from halp.utils.utils import void_cast_func
 from halp.utils.utils import single_to_half_det, single_to_half_stoc
@@ -60,11 +63,21 @@ parser.add_argument("--debug-test", action="store_true",
 parser.add_argument("--rounding", default="near", type=str,
                     choices=["near", "stoc", "void"],
                     help="Support nearest (near) and stochastic (stoc) rounding.")
+parser.add_argument("--dataset", default="mnist", type=str, 
+                    choices=["mnist", "cifar10"], 
+                    help="The dataset to train on.")
+parser.add_argument("--model", default="logreg", type=str,
+                    choices=["logreg", "lenet"],
+                    help="The model used on the given dataset.")
 args = parser.parse_args()
 utils.set_seed(args.seed)
 
-train_loader, val_loader, input_shape = get_mnist_data_loader(
-    onehot=False, debug_test=args.debug_test, batch_size=args.batch_size)
+if args.dataset == "mnist":
+    train_loader, val_loader, input_shape, n_train_sample = get_mnist_data_loader(
+        onehot=False, debug_test=args.debug_test, batch_size=args.batch_size)
+elif args.dataset == "cifar10":
+    train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
+        batch_size=args.batch_size)
 
 if args.debug_test:
     args.cast_func = void_cast_func
@@ -80,7 +93,8 @@ else:
     raise Exception("The rounding method is not supported!")
 
 # TODO resolve this for trainin procedure and avoid this check
-if len(train_loader) != args.batch_size * args.T:
+print("dataset stats: n_batch, batch_size, T ", len(train_loader), args.batch_size, args.T)
+if len(train_loader) != args.T:
     raise Exception("Currently not supporting settings other than T = 1 epoch, please resolve")
 
 # determine the dtype
@@ -92,14 +106,25 @@ else:
     args.dtype = "fp"
 
 # note reg_lambda is dummy here, the regularizer is handled by the optimizer
-model = LogisticRegression(
-    input_dim=input_shape[1],
-    n_class=args.n_classes,
-    reg_lambda=args.reg,
-    dtype=args.dtype,
-    cast_func=args.cast_func,
-    n_train_sample=len(train_loader))
+if args.model == "logreg":
+    model = LogisticRegression(
+        input_dim=input_shape[1],
+        n_class=args.n_classes,
+        reg_lambda=args.reg,
+        dtype=args.dtype,
+        cast_func=args.cast_func,
+        n_train_sample=n_train_sample)
+elif args.model == "lenet":
+    model = LeNet(
+        cast_func=args.cast_func,
+        n_train_sample=n_train_sample,
+        dtype=args.dtype).double()
+else:
+    raise Exception(args.model + " is currently not supported!")
+
 if args.cuda:
+    # note as the cache are set up in the first foward pass
+    # the location of the cache is not controled by the cuda() here
     model.cuda()
 
 # setup optimizer
@@ -128,7 +153,7 @@ elif args.solver == "bc-sgd":
         params_name=params_name,
         lr=args.alpha,
         weight_decay=args.reg,
-        n_train_sample=len(train_loader),
+        n_train_sample=n_train_sample,
         cast_func=args.cast_func,
         minibatch_size=args.batch_size,
         T=args.T)
@@ -138,7 +163,7 @@ elif args.solver == "bc-svrg":
         params_name=params_name,
         lr=args.alpha,
         weight_decay=args.reg,
-        n_train_sample=len(train_loader),
+        n_train_sample=n_train_sample,
         cast_func=args.cast_func,
         minibatch_size=args.batch_size,
         T=args.T)
@@ -149,9 +174,10 @@ else:
 start_time = time.time()
 # run training procedure
 logger.info("optimizer " + optimizer.__class__.__name__)
-logger.info("model " + model.linear.__class__.__name__)
+logger.info("model " + model.__class__.__name__)
 logger.info("optimizer rounding func " + optimizer.cast_func.__name__)
 logger.info("model rounding func " + model.cast_func.__name__)
+model.print_module_types()
 if (args.solver == "bc-sgd") or (args.solver == "bc-svrg"):
     train_loss = train_bit_center_optimizer(
         model=model,

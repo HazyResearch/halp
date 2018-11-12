@@ -114,4 +114,4 @@ def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1):
     val_loader = torch.utils.data.DataLoader(
         val_data, batch_size=batch_size, shuffle=False)
     input_shape = (batch_size,) + X_train.shape[1:]
-    return train_loader, val_loader, input_shape
+    return train_loader, val_loader, input_shape, X_train.shape[0]

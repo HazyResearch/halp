@@ -68,11 +68,16 @@
 # python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp16_timing_batch_1.log
 # python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=60000 --cuda 2>&1 | tee log/ca_lp_sgd_fp16_timing_batch_100.log
 
-# python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_bc_svrg_fp16_timing_batch_1.log
-python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=600 --cuda 2>&1 | tee log/ca_bc_svrg_fp16_timing_batch_100.log
+# # python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_bc_svrg_fp16_timing_batch_1.log
+# python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=600 --cuda 2>&1 | tee log/ca_bc_svrg_fp16_timing_batch_100.log
 
-# python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_bc_sgd_fp16_timing_batch_1.log
-python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=600 --cuda 2>&1 | tee log/ca_bc_sgd_fp16_timing_batch_100.log
+# # python mnist_log_reg.py --n-epochs=5 --batch-size=1 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=60000 --cuda 2>&1 | tee log/ca_bc_sgd_fp16_timing_batch_1.log
+# python mnist_log_reg.py --n-epochs=10 --batch-size=100 --reg=0.00009 --alpha=0.003 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=600 --cuda 2>&1 | tee log/ca_bc_sgd_fp16_timing_batch_100.log
 
+## test run for mnist experiments
+# python mnist_log_reg.py --n-epochs=10 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=469 --cuda 2>&1
 
+# python mnist_log_reg.py --n-epochs=10 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1
+
+python mnist_log_reg.py --n-epochs=10 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1
 

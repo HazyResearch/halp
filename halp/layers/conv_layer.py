@@ -153,6 +153,10 @@ class BitCenterConv2DFunction(Function):
         else:
             grad_bias_delta = None
         grad_stride, grad_padding, grad_dilation, grad_group = None, None, None, None
+        
+        # print("conv back value ", torch.sum(grad_input_delta**2).item())
+
+
         return grad_input_delta, grad_input_lp, grad_output_grad_lp, \
             grad_weight_delta, grad_weight_lp, grad_bias_delta, grad_bias_lp, \
             grad_stride, grad_padding, grad_dilation, grad_group

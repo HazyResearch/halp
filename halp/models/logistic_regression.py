@@ -25,7 +25,7 @@ class LogisticRegression(BitCenterModule):
 
     if dtype == "bc":
         pass    
-    elif dtype == "fp":
+    elif (dtype == "fp") or (dtype == "lp"):
         # we use the copied weights to guarantee same initialization
         # across different dtype when using the same random seed
         linear_tmp = self.linear
@@ -33,18 +33,20 @@ class LogisticRegression(BitCenterModule):
         self.criterion = torch.nn.CrossEntropyLoss(size_average=True)
         self.linear.weight.data.copy_(linear_tmp.weight)
         self.linear.bias.data.copy_(linear_tmp.bias)
-    elif dtype == "lp":
-        # pass
-        if self.cast_func == void_cast_func:
-            pass
-        else:
-            self.linear.half()
-            self.criterion.half()
+        if dtype == "lp":
+            # pass
+            if self.cast_func == void_cast_func:
+                pass
+            else:
+                self.linear.half()
+                self.criterion.half()
     else:
         raise Exception("dtype not supported")
     self.dtype = dtype
 
   def forward(self, x, y):
+    if len(list(x.size())) != 2:
+        x = x.view(x.size(0), -1)
     self.output = self.linear(x)
     if len(list(y.size() ) ) == 2:
         y = y.squeeze()
@@ -52,6 +54,8 @@ class LogisticRegression(BitCenterModule):
     return self.loss
 
   def predict(self, x):
+    if len(list(x.size())) != 2:
+        x = x.view(x.size(0), -1)
     output = self.linear(x)
     if isinstance(self.linear, BitCenterLinear):
         assert self.linear.do_offset == True
