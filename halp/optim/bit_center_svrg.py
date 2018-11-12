@@ -18,11 +18,27 @@ class BitCenterSVRG(BitCenterOptim):
     as the gradient cache is small, we cache gradients on GPU
     We accumulate full gradient in full precision and then cast it
     """
-    def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=1, cast_func=void_cast_func, minibatch_size=128, T=1):
-        super(BitCenterSVRG, self).__init__(params, params_name, lr, 
-            weight_decay, n_train_sample, cast_func,
-            minibatch_size=minibatch_size, T=T)
+
+    def __init__(self,
+                 params,
+                 params_name,
+                 lr=required,
+                 momentum=0.0,
+                 weight_decay=0.0,
+                 n_train_sample=1,
+                 cast_func=void_cast_func,
+                 minibatch_size=128,
+                 T=1):
+        super(BitCenterSVRG, self).__init__(
+            params,
+            params_name,
+            lr,
+            momentum,
+            weight_decay,
+            n_train_sample,
+            cast_func,
+            minibatch_size=minibatch_size,
+            T=T)
 
     def setup_single_grad_cache(self, grad_shape):
         logger.info("setup fp accum for full grad")
@@ -56,14 +72,14 @@ class BitCenterSVRG(BitCenterOptim):
 #     """
 #     we hack the bit center SVRG to accommodate fp and lp svrg
 #     by reusing the gradient caching system
-#     """ 
-#     def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
+#     """
+#     def __init__(self, params, params_name, lr=required, weight_decay=0.0,
 #         n_train_sample=1, minibatch_size=128):
 #         """
 #         we use void cast function to make sure it behaves in the mode
 #         of lp or fp svrg instead of bc svrg
 #         """
-#         super(SVRG, self).__init__(params, params_name, lr=required, weight_decay=0.0, 
+#         super(SVRG, self).__init__(params, params_name, lr=required, weight_decay=0.0,
 #         n_train_sample=1, cast_func=void_cast_func, minibatch_size=128)
 
 #     def set_model_mode(self, model, do_offset=False):
@@ -139,9 +155,8 @@ class BitCenterSVRG(BitCenterOptim):
 #                 if p.is_cuda:
 #                     lr = lr.cuda()
 #                 p.data.add_(-lr, p.grad.data)
-#                 if not grad_offset.is_cuda:   
+#                 if not grad_offset.is_cuda:
 #                    p.data.sub_(grad_offset.cuda())
 #                 else:
 #                    p.data.sub_(grad_offset)
 #         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
-

@@ -37,6 +37,8 @@ parser.add_argument("-bs", "--batch-size", action="store", default=100, type=int
                     help="Batch size.")
 parser.add_argument("-a", "--alpha", action="store", default=0.01, type=float,
                     help="Learning Rate")
+parser.add_argument("-m", "--momentum", default=0.0, type=float,
+                    help="momentum value for Polyak's momentum algorithm")
 parser.add_argument("-b", "--n-bits", action="store", default=8, type=int,
                     help="Number of bits of precision")
 parser.add_argument("--lin-fwd-sf", action="store", default=1, type=float,
@@ -134,15 +136,19 @@ params = [y for x, y in model.named_parameters()]
 logger.info("Params list: ")
 for name, p in zip(params_name, params):
     logger.info(name + " " + str(p.dtype))
-
 if (args.solver == "sgd") or (args.solver == "lp-sgd"):
-    optimizer = SGD(params=params, lr=args.alpha, weight_decay=args.reg)
+    optimizer = SGD(
+        params=params,
+        lr=args.alpha,
+        momentum=args.momentum,
+        weight_decay=args.reg)
     optimizer.cast_func = args.cast_func
     optimizer.T = None
 elif (args.solver == "svrg") or (args.solver == "lp-svrg"):
     optimizer = SVRG(
         params=params,
         lr=args.alpha,
+        momentum=args.momentum,
         weight_decay=args.reg,
         T=args.T,
         data_loader=train_loader)
@@ -152,6 +158,7 @@ elif args.solver == "bc-sgd":
         params=params,
         params_name=params_name,
         lr=args.alpha,
+        momentum=args.momentum,
         weight_decay=args.reg,
         n_train_sample=n_train_sample,
         cast_func=args.cast_func,
@@ -162,6 +169,7 @@ elif args.solver == "bc-svrg":
         params=params,
         params_name=params_name,
         lr=args.alpha,
+        momentum=args.momentum,
         weight_decay=args.reg,
         n_train_sample=n_train_sample,
         cast_func=args.cast_func,

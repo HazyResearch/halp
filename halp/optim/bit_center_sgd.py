@@ -16,8 +16,17 @@ class BitCenterOptim(SGD):
     """
     The base class for bit center optimizer: bit center SGD, bit center SVRG
     """
-    def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128, T=1):
+
+    def __init__(self,
+                 params,
+                 params_name,
+                 lr=required,
+                 momentum=0.0,
+                 weight_decay=0.0,
+                 n_train_sample=128,
+                 cast_func=void_cast_func,
+                 minibatch_size=128,
+                 T=1):
         """
         The base class for bit centering style optimizers
         The bit centering optimizer can be used with calling step_fp for compute offset
@@ -26,20 +35,22 @@ class BitCenterOptim(SGD):
         step_fp for updates.
         """
         # TODO (Jian) Considering merge step_fp and step_lp into a single step function
-        defaults = dict(lr=lr, weight_decay=weight_decay)
+        defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay)
         super(BitCenterOptim, self).__init__(params, **defaults)
         if len(self.param_groups) != 1:
-            logger.error("Bit centering optimizers doesn't support per-parameter options "
-                             "(parameter groups)")
+            logger.error(
+                "Bit centering optimizers doesn't support per-parameter options "
+                "(parameter groups)")
             raise ValueError("Bit centering optimizers doesn't support per-parameter options " \
                              "(parameter groups)")
         self.param_groups[0]['params_name'] = params_name
         self.n_train_sample = n_train_sample
-        self.n_minibatch_per_epoch = int(np.floor( (self.n_train_sample - 1) // float(minibatch_size)) + 1)
+        self.n_minibatch_per_epoch = int(
+            np.floor((self.n_train_sample - 1) // float(minibatch_size)) + 1)
         # self.n_minibatch_per_epoch = n_minibatch_per_epoch
         self.cast_func = cast_func
-        self.step_iter = 0    # this is a iter for step_lp function
-        self.cache_iter = 0   # this is a iter for updating the gradient cache
+        self.step_iter = 0  # this is a iter for step_lp function
+        self.cache_iter = 0  # this is a iter for updating the gradient cache
         self.setup_grad_cache()
         self.T = T
 
@@ -70,13 +81,15 @@ class BitCenterOptim(SGD):
         # to make sure the data idx in each minibatch is the same between the fp pass and lp pass
         for param_group in self.param_groups:
             weight_decay = param_group["weight_decay"]
-            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+            for p, p_name in zip(param_group["params"],
+                                 param_group["params_name"]):
                 cache = self.grad_cache[p_name]
                 if cache is None:
                     continue
                 if weight_decay != 0.0:
                     p.grad.data.add_(weight_decay, p.data)
-                self.update_single_grad_cache(p.grad * param_group["lr"], cache)
+                self.update_single_grad_cache(p.grad * param_group["lr"],
+                                              cache)
 
     def get_single_grad_offset(self, cache, cache_iter=0):
         # cache iter is useful for bit centering SGD to retrieve gradient offset
@@ -85,20 +98,32 @@ class BitCenterOptim(SGD):
     def step_lp(self):
         for param_group in self.param_groups:
             lr = self.cast_func(torch.Tensor(np.array(param_group["lr"])))
-            weight_decay = self.cast_func(torch.Tensor(np.array(param_group["weight_decay"])))
-            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+            weight_decay = self.cast_func(
+                torch.Tensor(np.array(param_group["weight_decay"])))
+            momentum = self.cast_func(
+                torch.Tensor(np.array(param_group["momentum"])))
+            for p, p_name in zip(param_group["params"],
+                                 param_group["params_name"]):
                 if not p_name.endswith("_delta"):
                     continue
                 cache = self.grad_cache[p_name.split("_delta")[0]]
                 grad_offset = self.get_single_grad_offset(cache)
                 if weight_decay.item() != 0.0:
                     p.grad.data.add_(weight_decay.item(), p.data)
-                move = lr.item() * p.grad.data 
-                if p.is_cuda:   
-                   move.add_(grad_offset.cuda())
+                if (momentum.numel() != 0) and (momentum.item() != 0.0):
+                    param_state = self.state[p]
+                    if "momentum_buffer" not in param_state:
+                        param_state["momentum_buffer"] = torch.zeros_like(
+                            p.data)
+                    buf = param_state["momentum_buffer"]
+                    buf.mul_(momentum.item()).add_(lr.item() * p.grad.data)
                 else:
-                   move.add_(grad_offset)
-                p.data.add_(-move)
+                    buf = lr.item() * p.grad.data
+                if p.is_cuda:
+                    buf.add_(grad_offset.cuda())
+                else:
+                    buf.add_(grad_offset)
+                p.data.add_(-buf)
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
     def step_fp(self):
@@ -107,16 +132,18 @@ class BitCenterOptim(SGD):
         self.update_grad_cache()
         self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
-
     def update_offset_vars(self):
         for param_group in self.param_groups:
-            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+            for p, p_name in zip(param_group["params"],
+                                 param_group["params_name"]):
                 if not p_name.endswith("_delta"):
                     continue
                 # update the offset variable and its lp version
-                corr_found = False 
+                corr_found = False
                 for param_offset_group in self.param_groups:
-                    for p_offset, p_offset_name in zip(param_offset_group["params"], param_offset_group["params_name"]):
+                    for p_offset, p_offset_name in zip(
+                            param_offset_group["params"],
+                            param_offset_group["params_name"]):
                         if p_offset_name == p_name.split("_delta")[0]:
                             # p_offset = p_offset + p.type(p_offset.dtype)
                             p_offset.data.add_(p.data.type(p_offset.dtype))
@@ -124,9 +151,13 @@ class BitCenterOptim(SGD):
                             # update the offset lp variable
                             lp_corr_found = False
                             for param_offset_lp_group in self.param_groups:
-                                for p_offset_lp, p_offset_lp_name in zip(param_offset_group["params"], param_offset_group["params_name"]):
-                                    if p_offset_lp_name == p_name.split("_delta")[0] + "_lp":
-                                        p_offset_lp.data.copy_(self.cast_func(p_offset))
+                                for p_offset_lp, p_offset_lp_name in zip(
+                                        param_offset_group["params"],
+                                        param_offset_group["params_name"]):
+                                    if p_offset_lp_name == p_name.split(
+                                            "_delta")[0] + "_lp":
+                                        p_offset_lp.data.copy_(
+                                            self.cast_func(p_offset))
                                         lp_corr_found = True
 
                 if corr_found == False or lp_corr_found == False:
@@ -144,7 +175,8 @@ class BitCenterOptim(SGD):
 
     def reset_delta_vars(self):
         for param_group in self.param_groups:
-            for p, p_name in zip(param_group["params"], param_group["params_name"]):
+            for p, p_name in zip(param_group["params"],
+                                 param_group["params_name"]):
                 if p_name.endswith("_delta"):
                     p.data.zero_()
 
@@ -166,25 +198,43 @@ class BitCenterOptim(SGD):
         self.clear_cache()
         model.set_mode(do_offset=True)
         # self.set_model_mode(model, do_offset=True)
-        
+
     def on_end_fp_steps(self, model):
         # pass
         model.set_mode(do_offset=True)
         # self.set_model_mode(model, do_offset=True)
 
     def step(self):
-        raise Exception("This function is not suppose to be called. Please use step_lp or step_fp")
+        raise Exception(
+            "This function is not suppose to be called. Please use step_lp or step_fp"
+        )
 
 
 class BitCenterSGD(BitCenterOptim):
     """
     Implementation of bit centering SGD
     """
-    def __init__(self, params, params_name, lr=required, weight_decay=0.0, 
-        n_train_sample=128, cast_func=void_cast_func, minibatch_size=128, T=1):
-        super(BitCenterSGD, self).__init__(params, params_name, lr, 
-            weight_decay, n_train_sample, cast_func, 
-            minibatch_size=minibatch_size, T=T)
+
+    def __init__(self,
+                 params,
+                 params_name,
+                 lr=required,
+                 momentum=0.0,
+                 weight_decay=0.0,
+                 n_train_sample=128,
+                 cast_func=void_cast_func,
+                 minibatch_size=128,
+                 T=1):
+        super(BitCenterSGD, self).__init__(
+            params,
+            params_name,
+            lr,
+            momentum,
+            weight_decay,
+            n_train_sample,
+            cast_func,
+            minibatch_size=minibatch_size,
+            T=T)
 
     def setup_single_grad_cache(self, grad_shape):
         cache_shape = [self.n_minibatch_per_epoch] + grad_shape
