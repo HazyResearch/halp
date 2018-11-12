@@ -88,7 +88,11 @@ class TestBitCenterOptim(HalpTest):
                         atol=6.2e-5,
                         rtol=1.0 / 1024.0 / 4.0)
                 elif p_name.endswith("_lp"):
-                    assert (p_prev.cpu().detach().numpy() == p.cpu().detach().
+                    if is_last_update:
+                        assert not (p_prev.cpu().detach().numpy() == p.cpu().detach().
+                            numpy()).all()
+                    else:
+                        assert (p_prev.cpu().detach().numpy() == p.cpu().detach().
                             numpy()).all()
                 else:  # this branch check the offset variables
                     if is_last_update:

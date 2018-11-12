@@ -118,7 +118,7 @@ elif args.model == "lenet":
     model = LeNet(
         cast_func=args.cast_func,
         n_train_sample=n_train_sample,
-        dtype=args.dtype).double()
+        dtype=args.dtype)
 else:
     raise Exception(args.model + " is currently not supported!")
 

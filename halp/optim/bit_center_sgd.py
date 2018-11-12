@@ -95,9 +95,9 @@ class BitCenterOptim(SGD):
                     p.grad.data.add_(weight_decay.item(), p.data)
                 move = lr.item() * p.grad.data 
                 if p.is_cuda:   
-                   move.add_(grad_offset.cuda().double())
+                   move.add_(grad_offset.cuda())
                 else:
-                   move.add_(grad_offset.double())
+                   move.add_(grad_offset)
                 p.data.add_(-move)
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
@@ -188,7 +188,7 @@ class BitCenterSGD(BitCenterOptim):
 
     def setup_single_grad_cache(self, grad_shape):
         cache_shape = [self.n_minibatch_per_epoch] + grad_shape
-        return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu().double()
+        return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu()
 
     def update_single_grad_cache(self, grad, cache):
         # the input grad is actually grad * lr in function update_grad_cache

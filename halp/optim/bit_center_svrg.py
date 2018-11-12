@@ -37,6 +37,7 @@ class BitCenterSVRG(BitCenterOptim):
         return cache
 
     def on_start_fp_steps(self, model):
+        # resetup single precision cache
         self.setup_grad_cache()
         model.set_mode(do_offset=True)
 
@@ -45,6 +46,7 @@ class BitCenterSVRG(BitCenterOptim):
         for key, cache in self.grad_cache.items():
             if cache is not None:
                 cache.div_(self.n_minibatch_per_epoch)
+                # turn the cache into half precision
                 self.grad_cache[key] = self.cast_func(cache)
         model.set_mode(do_offset=True)
 

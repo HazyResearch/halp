@@ -54,7 +54,7 @@ def train_non_bit_center_optimizer(model,
             if dtype == "bc":
                 raise Exception("This function can only run non-bc optimizers")
             optimizer.zero_grad()
-            train_loss = model(X.double(), Y)
+            train_loss = model(X, Y)
             train_loss.backward()
             if optimizer.__class__.__name__ == "SVRG":
 
@@ -77,7 +77,7 @@ def train_non_bit_center_optimizer(model,
             logger.info("train loss e/i/l " + str(epoch_id) + " " + str(i) + " " + str(train_loss.item()))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
-        # eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
+        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
     return train_loss_list, eval_metric_list
 
 
@@ -105,7 +105,7 @@ def train_bit_center_optimizer(model,
                     optimizer.zero_grad()
                     if use_cuda:
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
-                    loss_fp = model(X_fp.double(), Y_fp)
+                    loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
                     if j < 3:
@@ -121,7 +121,7 @@ def train_bit_center_optimizer(model,
                     "This training function does not support dtype other than bc"
                 )
             optimizer.zero_grad()
-            train_loss = model(X.double(), Y)
+            train_loss = model(X, Y)
             train_loss.backward()
             optimizer.step_lp()
             train_loss_list.append(train_loss.item())
@@ -132,6 +132,6 @@ def train_bit_center_optimizer(model,
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)
-        # eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype=dtype))
+        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype=dtype))
         optimizer.on_end_fp_steps(model)
     return train_loss_list, eval_metric_list
