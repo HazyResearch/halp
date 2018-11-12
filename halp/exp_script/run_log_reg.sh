@@ -79,5 +79,17 @@
 
 # python mnist_log_reg.py --n-epochs=10 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1
 
-python mnist_log_reg.py --n-epochs=10 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1
+# python mnist_log_reg.py --n-epochs=10 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1
+
+# LeNet verification runs
+# python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='sgd' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp32_sgd.log
+# python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_sgd.log
+# python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_bc_sgd_near.log
+
+python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_svrg.log
+python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_bc_svrg_near.log
+
+
+
+
 
