@@ -115,13 +115,6 @@ class TestBitCenterLayer(HalpTest):
             get_loss, input, target=input[0], eps=perturb_eps)
         grad_list.append(num_input_grad)
         grad_list += self.get_numerical_param_grad(layer, input, get_loss, perturb_eps)
-        # num_weight_grad = get_numerical_jacobian(
-        #     get_loss, input, target=layer.weight, eps=perturb_eps)
-        # grad_list.append(num_weight_grad)
-        # if layer.bias is not None:
-        #     num_bias_grad = get_numerical_jacobian(
-        #         get_loss, input, target=layer.bias, eps=perturb_eps)
-        #     grad_list.append(num_bias_grad)
         return output_final, grad_list
 
     def test_forward_backward_output(self):

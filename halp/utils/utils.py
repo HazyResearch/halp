@@ -92,7 +92,6 @@ def copy_model_weights(model_old, model_new):
         old_param = get_recur_attr(model_old, name.split("."))
         new_param = get_recur_attr(model_new, name.split("."))
         new_param.data.copy_(old_param.data)
-        # print("test ", torch.sum(new_param**2), torch.sum(old_param**2))
 
 
 class UtilityTest(TestCase):

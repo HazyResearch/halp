@@ -40,9 +40,6 @@ class BitCenterCrossEntropyLPFunction(Function):
         grad_input_delta.add_(-grad_offset)
         grad_target = None
         grad_grad_offset = None
-
-        # print("entropy back value ", torch.sum(grad_input_delta**2).item())
-
         return grad_input_delta, grad_input_lp, grad_target, grad_grad_offset
 
 
@@ -112,13 +109,7 @@ class BitCenterCrossEntropy(BitCenterLayer):
             # we use the following variable only for test purpose, we want to be able to access
             # the gradeint value wrt input in the outside world. For lp mode, it is grad_input_delta
             # for fp mode, it is grad_input
-            # TODO: update if pytorch stable version fixes this:
-            # The following branch is due to the layer specific behavior of
-            # input argument to the backward hook.
-            # Here we hard code the order of tensor in the input list (this is layer specific)
-            self.input_grad_for_test = input[0].clone()
-        else:
-            self.input_grad_for_test = input[0].clone()
+        self.input_grad_for_test = input[0].clone()
 
     def forward_fp(self, input, target):
         if self.input_cache is None:

@@ -41,9 +41,6 @@ class BitCenterLinearFunction(Function):
     def backward(ctx, grad_output):
         input_lp, input_delta, output_grad_lp, \
             weight_lp, weight_delta, bias_lp, bias_delta = ctx.saved_tensors
-
-        # print("linear functional grad output ", torch.sum( (grad_output + output_grad_lp)**2).item())
-            
         grad_input_lp = None
         grad_input_delta = \
             grad_output.mm((weight_lp + weight_delta)) + output_grad_lp.mm(weight_delta)
@@ -57,10 +54,6 @@ class BitCenterLinearFunction(Function):
             grad_bias_delta = grad_output.sum(0)
         else:
             grad_bias_delta = None
-
-        # print("linear back value ", torch.sum(grad_input_delta**2).item())
-        # print("linear functional grad input ", torch.sum(grad_weight_delta**2).item(), torch.sum(grad_bias_delta**2).item())
-
         return grad_input_delta, grad_input_lp, grad_output_grad_lp, \
             grad_weight_delta, grad_weight_lp, grad_bias_delta, grad_bias_lp
 

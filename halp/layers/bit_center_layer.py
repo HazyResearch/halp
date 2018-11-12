@@ -131,9 +131,6 @@ class BitCenterLayer(BitCenterModule):
 
     def update_input_cache(self, input):
         if self.do_offset:
-            # print("double check ", self.cache_iter, min(
-            #     self.cache_iter +
-            #     input.size()[0], self.n_train_sample), input.shape)
             self.input_cache[self.cache_iter:min(
                 self.cache_iter +
                 input.size()[0], self.n_train_sample)].data.copy_(

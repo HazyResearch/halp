@@ -17,7 +17,6 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
     '''
     Test the functionality of bit centering linear layers
     '''
-
     def get_config(self, type="grad_check"):
         config = {}
         if type == "grad_check":
@@ -62,8 +61,6 @@ class TestBitCenterLinearLayer(TestBitCenterLayer, TestCase):
         self.target_dtype = None
         if do_double:
             layer.double()
-            # input_delta = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
-            # input_fp = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
             layer.weight.data.copy_(
                 torch.randn(
                     dim_out, dim_in, dtype=torch.double,
