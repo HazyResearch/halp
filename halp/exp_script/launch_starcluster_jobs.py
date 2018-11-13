@@ -70,7 +70,7 @@ def run_experiment(exp_name,
                                 command = command.replace(
                                     "--alpha=unk", "--alpha=" + str(lr))
                                 command = command.replace(
-                                    "--momentum=unk", "--momentum=" + str(lr))
+                                    "--momentum=unk", "--momentum=" + str(momentum))
                                 command = command.replace(
                                     "--rounding=unk", "--rounding=" + rounding)
                                 command = command.replace(
@@ -101,24 +101,24 @@ def run_experiment(exp_name,
 
 if __name__ == "__main__":
     exp_name = "lenet_hyper_sweep_2018_nov_12"
-    # n_epochs = 100
-    n_epochs = 2
+    n_epochs = 100
+    # n_epochs = 2
     batch_size = 128
     n_classes = 10
     l2_reg_list = [5e-4]
-    # lr_list = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
-    # momentum_list = [0.0, 0.9]
-    # seed_list = [1, 2, 3]
-    lr_list = [0.01, ]
-    momentum_list = [0.9, ]
-    seed_list = [1,]
-    opt_algo_list = ["bc-sgd", "bc-svrg", "sgd", "svrg", "lp-sgd", "lp-svrg"]
+    lr_list = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+    momentum_list = [0.0, 0.9]
+    seed_list = [1, 2, 3]
+    # lr_list = [0.01, ]
+    # momentum_list = [0.9, ]
+    # seed_list = [1,]
+    opt_algo_list = ["bc-svrg", "bc-sgd", "sgd", "svrg", "lp-sgd", "lp-svrg"]
     rounding_list = ["near"]
     T_list = [391]
     dataset = "cifar10"
     model = "lenet"
-    # run_option = "dryrun"
-    run_option = "run"
+    run_option = "dryrun"
+    # run_option = "run"
     run_experiment(
         exp_name,
         n_epochs,
