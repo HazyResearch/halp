@@ -118,6 +118,7 @@ if args.model == "logreg":
         n_train_sample=n_train_sample)
 elif args.model == "lenet":
     model = LeNet(
+        reg_lambda=args.reg,
         cast_func=args.cast_func,
         n_train_sample=n_train_sample,
         dtype=args.dtype)

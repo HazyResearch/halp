@@ -2,8 +2,43 @@ import torch
 import numpy as np
 import logging
 import sys
+import math
+from halp.optim.bit_center_sgd import BitCenterOptim
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
+
+
+def get_grad_norm(optimizer, model):
+    """
+    note this function only supports a single learning rate in the optimizer
+    This is because the gradient offset is actually the lr * grad offset.
+    We need to recover it here
+    """
+    norm = 0.0
+    if isinstance(optimizer, BitCenterOptim):
+        named_delta_parameters = optimizer.get_named_delta_parameters()
+        lr = optimizer.param_groups[0]["lr"]
+        for p_name, p in named_delta_parameters:
+            # note we need to make sure this function is properly used
+            # as the optimizer's get_single_grad_offset is used and it
+            # depends on the internal functions of the optimizer.
+            # generally, use this function after the .backward() call.
+            if not p.requires_grad:
+                raise Exception(p_name + " does not require gradient!")
+            cache = optimizer.grad_cache[p_name.split("_delta")[0]]
+            grad_offset = optimizer.get_single_grad_offset(cache)
+            grad_delta = p.grad.data
+            norm += torch.sum((grad_delta.type(torch.FloatTensor) \
+                + grad_offset.type(torch.FloatTensor) / lr)**2).item()
+            # print("doing bc grad norm ", p_name, norm, torch.sum(grad_offset**2).item())
+    else:
+        for p_name, p in model.named_parameters():
+            if p.requires_grad:
+                norm += torch.sum(p.grad.data.type(torch.FloatTensor)
+                                  **2).item()
+            # print("doing non bc grad norm", p_name, norm)
+    return math.sqrt(norm)
+
 
 def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
     model.eval()
@@ -23,9 +58,11 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
         cross_entropy_accum += model.criterion(
             output, Y).data.cpu().numpy() * X.shape[0]
         sample_cnt += pred.size
-    logger.info("Eval acc " + str(correct_cnt / float(sample_cnt)) +
-                " eval cross entropy " +
-                str(cross_entropy_accum / float(sample_cnt)))
+    logger.info(
+        "Test metric acc: " + str(correct_cnt / float(sample_cnt)) +
+        " loss: " +
+        str(cross_entropy_accum / float(sample_cnt) +
+            model.reg_lambda * model.get_trainable_param_squared_norm()))
     return (correct_cnt / float(sample_cnt),
             cross_entropy_accum / float(sample_cnt))
 
@@ -55,7 +92,10 @@ def train_non_bit_center_optimizer(model,
                 raise Exception("This function can only run non-bc optimizers")
             optimizer.zero_grad()
             train_loss = model(X, Y)
+            train_pred = model.output.data.cpu().numpy().argmax(axis=1)
+            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(Y.size(0))
             train_loss.backward()
+            grad_norm = get_grad_norm(optimizer, model)
             if optimizer.__class__.__name__ == "SVRG":
 
                 def svrg_closure(data=X, target=Y):
@@ -65,7 +105,8 @@ def train_non_bit_center_optimizer(model,
                     if dtype == "lp":
                         data = optimizer.cast_func(data)
                     if dtype == "bc":
-                        raise Exception("This function can only run non-bc optimizers")
+                        raise Exception(
+                            "This function can only run non-bc optimizers")
                     loss = model(data, target)
                     loss.backward()
                     return loss
@@ -74,7 +115,10 @@ def train_non_bit_center_optimizer(model,
             else:
                 optimizer.step()
             train_loss_list.append(train_loss.item())
-            logger.info("train loss e/i/l " + str(epoch_id) + " " + str(i) + " " + str(train_loss.item()))
+            logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
+                        str(i) + " loss:" + str(train_loss.item()) +
+                        " grad_norm: " + str(grad_norm) + " acc: " +
+                        str(train_acc))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
@@ -108,8 +152,6 @@ def train_bit_center_optimizer(model,
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
-                    if j < 3:
-                        print("fp steps ", j, loss_fp.item())
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
             if use_cuda:
@@ -122,16 +164,23 @@ def train_bit_center_optimizer(model,
                 )
             optimizer.zero_grad()
             train_loss = model(X, Y)
+            train_pred = model.output.data.cpu().numpy().argmax(axis=1)
+            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(Y.size(0))
             train_loss.backward()
+            grad_norm = get_grad_norm(optimizer, model)
             optimizer.step_lp()
             train_loss_list.append(train_loss.item())
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
-            logger.info("train loss e/i/l " + str(epoch_id) + " " + str(i) + " " + str(train_loss.item()))
+            logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
+                        str(i) + " loss: " + str(train_loss.item()) +
+                        " grad_norm: " + str(grad_norm) + " acc: " +
+                        str(train_acc))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)
-        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype=dtype))
+        eval_metric_list.append(
+            eval_func(model, val_loader, use_cuda, dtype=dtype))
         optimizer.on_end_fp_steps(model)
     return train_loss_list, eval_metric_list

@@ -19,9 +19,9 @@ class LeNet_PyTorch(nn.Module):
         super(LeNet_PyTorch, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1   = nn.Linear(16*5*5, 120)
-        self.fc2   = nn.Linear(120, 84)
-        self.fc3   = nn.Linear(84, 10)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
         out = F.relu(self.conv1(x))
@@ -36,10 +36,15 @@ class LeNet_PyTorch(nn.Module):
 
 
 class LeNet(BitCenterModule):
-    def __init__(self, dtype="bc", cast_func=void_cast_func, n_train_sample=1):
+    def __init__(self,
+                 reg_lambda=0.0,
+                 dtype="bc",
+                 cast_func=void_cast_func,
+                 n_train_sample=1):
         super(LeNet, self).__init__()
         self.cast_func = cast_func
         self.n_train_sample = n_train_sample
+        self.reg_lambda = reg_lambda
         self.dtype = dtype
         # setup layers
         self.conv1 = BitCenterConv2D(
@@ -50,8 +55,7 @@ class LeNet(BitCenterModule):
             cast_func=cast_func,
             n_train_sample=n_train_sample)
         self.relu1 = BitCenterReLU(
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
+            cast_func=cast_func, n_train_sample=n_train_sample)
         self.max_pool1 = BitCenterMaxPool2D(
             kernel_size=(2, 2),
             cast_func=cast_func,
@@ -65,8 +69,7 @@ class LeNet(BitCenterModule):
             cast_func=cast_func,
             n_train_sample=n_train_sample)
         self.relu2 = BitCenterReLU(
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
+            cast_func=cast_func, n_train_sample=n_train_sample)
         self.max_pool2 = BitCenterMaxPool2D(
             kernel_size=(2, 2),
             cast_func=cast_func,
@@ -79,8 +82,7 @@ class LeNet(BitCenterModule):
             cast_func=cast_func,
             n_train_sample=n_train_sample)
         self.relu3 = BitCenterReLU(
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
+            cast_func=cast_func, n_train_sample=n_train_sample)
 
         self.fc2 = BitCenterLinear(
             in_features=120,
@@ -89,8 +91,7 @@ class LeNet(BitCenterModule):
             cast_func=cast_func,
             n_train_sample=n_train_sample)
         self.relu4 = BitCenterReLU(
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
+            cast_func=cast_func, n_train_sample=n_train_sample)
 
         self.fc3 = BitCenterLinear(
             in_features=84,
@@ -106,9 +107,9 @@ class LeNet(BitCenterModule):
         elif (dtype == "fp") or (dtype == "lp"):
             self.conv1 = copy_layer_weights(self.conv1, nn.Conv2d(3, 6, 5))
             self.conv2 = copy_layer_weights(self.conv2, nn.Conv2d(6, 16, 5))
-            self.fc1   = copy_layer_weights(self.fc1, nn.Linear(16*5*5, 120))
-            self.fc2   = copy_layer_weights(self.fc2, nn.Linear(120, 84))
-            self.fc3   = copy_layer_weights(self.fc3, nn.Linear(84, 10))
+            self.fc1 = copy_layer_weights(self.fc1, nn.Linear(16 * 5 * 5, 120))
+            self.fc2 = copy_layer_weights(self.fc2, nn.Linear(120, 84))
+            self.fc3 = copy_layer_weights(self.fc3, nn.Linear(84, 10))
             self.relu1 = nn.ReLU()
             self.relu2 = nn.ReLU()
             self.relu3 = nn.ReLU()
@@ -134,10 +135,14 @@ class LeNet(BitCenterModule):
         out = self.relu3(self.fc1(out))
         out = self.relu4(self.fc2(out))
         out = self.fc3(out)
+        self.output = out
         if test:
             return out
         else:
             self.loss = self.criterion(out, y)
+            # add the regularizer to the final loss
+            self.loss += self.reg_lambda * self.get_trainable_param_squared_norm(
+            )
             return self.loss
 
     def check_layer_status(self, do_offset=True):
@@ -154,9 +159,7 @@ class LeNet(BitCenterModule):
         assert self.fc3.do_offset == do_offset
         assert self.criterion.do_offset == do_offset
 
-
     def predict(self, x):
         output = self.forward(x, y=None, test=True)
         pred = output.data.cpu().numpy().argmax(axis=1)
         return pred, output
-

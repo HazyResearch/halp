@@ -25,7 +25,6 @@ class BitCenterModule(nn.Module):
         self.do_offset = do_offset
         self.cache_iter = cache_iter
         for child in self.children():
-            print 
             if isinstance(child, BitCenterModule):
                 child.set_mode(do_offset, cache_iter)
             else:
@@ -35,12 +34,25 @@ class BitCenterModule(nn.Module):
     def print_module_types(self):
         logger.info("module type: " + self.__class__.__name__)
         for child in self.children():
-            print 
             if isinstance(child, BitCenterModule):
                 child.print_module_types()
             else:
                 logger.warning("None bit centering module " \
                                + child.__class__.__name__)
+
+    def get_trainable_param_squared_norm(self):
+        state_dict = self.state_dict()
+        param_norm = 0.0
+        for name, p in self.named_parameters():
+            if (not name.endswith("_delta")) or (p.requires_grad == False):
+                continue
+            if name.split("_delta")[0] not in state_dict.keys():
+                raise Exception(name +
+                                " is not found in the module state dict")
+            p_fp = state_dict[name.split("_delta")[0]]
+            param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_fp.data.type(torch.FloatTensor))**2).item()
+            # print("name ", name, param_norm)
+        return param_norm
 
 
 class BitCenterModuleList(BitCenterModule, nn.ModuleList):

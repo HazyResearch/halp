@@ -95,6 +95,16 @@ class BitCenterOptim(SGD):
         # cache iter is useful for bit centering SGD to retrieve gradient offset
         pass
 
+    def get_named_delta_parameters(self):
+        named_parameters = []
+        for param_group in self.param_groups:
+            for p, p_name in zip(param_group["params"],
+                             param_group["params_name"]):
+                if not p_name.endswith("_delta"):
+                    continue
+                named_parameters.append((p_name, p))
+        return named_parameters
+
     def step_lp(self):
         for param_group in self.param_groups:
             lr = self.cast_func(torch.Tensor(np.array(param_group["lr"])))
@@ -102,10 +112,8 @@ class BitCenterOptim(SGD):
                 torch.Tensor(np.array(param_group["weight_decay"])))
             momentum = self.cast_func(
                 torch.Tensor(np.array(param_group["momentum"])))
-            for p, p_name in zip(param_group["params"],
-                                 param_group["params_name"]):
-                if not p_name.endswith("_delta"):
-                    continue
+            named_delta_parameters = self.get_named_delta_parameters()
+            for p_name, p in named_delta_parameters:
                 cache = self.grad_cache[p_name.split("_delta")[0]]
                 grad_offset = self.get_single_grad_offset(cache)
                 if weight_decay.item() != 0.0:
@@ -133,36 +141,33 @@ class BitCenterOptim(SGD):
         self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
     def update_offset_vars(self):
-        for param_group in self.param_groups:
-            for p, p_name in zip(param_group["params"],
-                                 param_group["params_name"]):
-                if not p_name.endswith("_delta"):
-                    continue
-                # update the offset variable and its lp version
-                corr_found = False
-                for param_offset_group in self.param_groups:
-                    for p_offset, p_offset_name in zip(
-                            param_offset_group["params"],
-                            param_offset_group["params_name"]):
-                        if p_offset_name == p_name.split("_delta")[0]:
-                            # p_offset = p_offset + p.type(p_offset.dtype)
-                            p_offset.data.add_(p.data.type(p_offset.dtype))
-                            corr_found = True
-                            # update the offset lp variable
-                            lp_corr_found = False
-                            for param_offset_lp_group in self.param_groups:
-                                for p_offset_lp, p_offset_lp_name in zip(
-                                        param_offset_group["params"],
-                                        param_offset_group["params_name"]):
-                                    if p_offset_lp_name == p_name.split(
-                                            "_delta")[0] + "_lp":
-                                        p_offset_lp.data.copy_(
-                                            self.cast_func(p_offset))
-                                        lp_corr_found = True
+        named_delta_parameters = self.get_named_delta_parameters()
+        for p_name, p in named_delta_parameters:
+            # update the offset variable and its lp version
+            corr_found = False
+            for param_offset_group in self.param_groups:
+                for p_offset, p_offset_name in zip(
+                        param_offset_group["params"],
+                        param_offset_group["params_name"]):
+                    if p_offset_name == p_name.split("_delta")[0]:
+                        # p_offset = p_offset + p.type(p_offset.dtype)
+                        p_offset.data.add_(p.data.type(p_offset.dtype))
+                        corr_found = True
+                        # update the offset lp variable
+                        lp_corr_found = False
+                        for param_offset_lp_group in self.param_groups:
+                            for p_offset_lp, p_offset_lp_name in zip(
+                                    param_offset_group["params"],
+                                    param_offset_group["params_name"]):
+                                if p_offset_lp_name == p_name.split(
+                                        "_delta")[0] + "_lp":
+                                    p_offset_lp.data.copy_(
+                                        self.cast_func(p_offset))
+                                    lp_corr_found = True
 
-                if corr_found == False or lp_corr_found == False:
-                    logger.error("Can not find offset var for ", p_name)
-                    raise Exception("Can not find offset var for ", p_name)
+            if corr_found == False or lp_corr_found == False:
+                logger.error("Can not find offset var for ", p_name)
+                raise Exception("Can not find offset var for ", p_name)
 
     def clear_cache(self):
         for cache in self.grad_cache.values():
@@ -191,6 +196,7 @@ class BitCenterOptim(SGD):
 
     def on_end_lp_steps(self, model):
         self.update_offset_vars()
+        self.reset_delta_vars()
         model.set_mode(do_offset=True)
         # self.set_model_mode(model, do_offset=True)
 

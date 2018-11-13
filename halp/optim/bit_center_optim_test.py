@@ -82,11 +82,15 @@ class TestBitCenterOptim(HalpTest):
                     # rtol test at least if the values are in neighbor positions
                     # in the of the float point grid, we require a bit stricter with
                     # a factor of 4.0
-                    np.testing.assert_allclose(
-                        new_p.cpu().detach().numpy(),
-                        p.cpu().detach().numpy(),
-                        atol=6.2e-5,
-                        rtol=1.0 / 1024.0 / 4.0)
+                    if not is_last_update:
+                        # Note here we are asserting on the delta variables.
+                        # As the delta variables are cleared before this test, 
+                        # we can not asssert on the last iteration.
+                        np.testing.assert_allclose(
+                            new_p.cpu().detach().numpy(),
+                            p.cpu().detach().numpy(),
+                            atol=6.2e-5,
+                            rtol=1.0 / 1024.0 / 4.0)
                 elif p_name.endswith("_lp"):
                     if is_last_update:
                         assert not (p_prev.cpu().detach().numpy() == p.cpu().detach().

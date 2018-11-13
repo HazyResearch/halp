@@ -51,6 +51,7 @@ class LogisticRegression(BitCenterModule):
     if len(list(y.size() ) ) == 2:
         y = y.squeeze()
     self.loss = self.criterion(self.output, y)
+    self.loss += self.reg_lambda * self.get_trainable_param_squared_norm()
     return self.loss
 
   def predict(self, x):
