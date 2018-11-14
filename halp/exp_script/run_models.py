@@ -207,3 +207,8 @@ else:
         dtype=args.dtype)
 end_time = time.time()
 print("Elapsed training time: ", end_time - start_time)
+
+
+logger.info("Cross check model property: Params list: ")
+for name, p in zip(params_name, params):
+    logger.info(name + " " + str(p.dtype))

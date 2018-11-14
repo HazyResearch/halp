@@ -87,7 +87,7 @@ def run_experiment(exp_name,
                                     + " -o " + save_path + save_suffix + "/run.log " \
                                     + " -e " + save_path + save_suffix + "/run.err " + save_path + save_suffix + "/job.sh"
                                 else:
-                                    launch_command = "bash " + save_path + save_suffix + "/job.sh"
+                                    launch_command = "bash " + save_path + save_suffix + "/job.sh 2>&1 | tee " + save_path + save_suffix + "/run.log"
                                 if run_option == "dryrun":
                                     print(launch_command)
                                 else:
@@ -100,19 +100,24 @@ def run_experiment(exp_name,
 
 
 if __name__ == "__main__":
-    exp_name = "lenet_hyper_sweep_2018_nov_12"
+    exp_name = "lenet_hyper_sweep_2018_nov_13"
     n_epochs = 100
     # n_epochs = 2
     batch_size = 128
     n_classes = 10
     l2_reg_list = [5e-4]
-    lr_list = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
-    momentum_list = [0.0, 0.9]
+    lr_list = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+    # momentum_list = [0.9]
+    # seed_list = [1,]
     seed_list = [1, 2, 3]
     # lr_list = [0.01, ]
-    # momentum_list = [0.9, ]
+    momentum_list = [0.9, 0.0]
     # seed_list = [1,]
     opt_algo_list = ["bc-svrg", "bc-sgd", "sgd", "svrg", "lp-sgd", "lp-svrg"]
+    # opt_algo_list = ["bc-svrg", "svrg"]
+    # opt_algo_list = ["bc-sgd", "sgd"]
+    # opt_algo_list = ["lp-sgd", "lp-svrg"]
+
     rounding_list = ["near"]
     T_list = [391]
     dataset = "cifar10"
