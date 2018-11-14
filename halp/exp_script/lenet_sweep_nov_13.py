@@ -123,8 +123,8 @@ if __name__ == "__main__":
     T_list = [391]
     dataset = "cifar10"
     model = "lenet"
-    run_option = "dryrun"
-    # run_option = "run"
+    #run_option = "dryrun"
+    run_option = "run"
     run_experiment(
         exp_name,
         n_epochs,
@@ -139,6 +139,6 @@ if __name__ == "__main__":
         T_list,
         dataset,
         model,
-        cluster="dawn",
-        # cluster="starcluster",
+        #cluster="dawn",
+        cluster="starcluster",
         run_option=run_option)

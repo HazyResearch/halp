@@ -1,1 +1,2 @@
-export PYTHONPATH="$PYTHONPATH:/Users/Jian/Data/research/halp_float/halp"
+export PYTHONPATH="$PYTHONPATH:/dfs/scratch0/zjian/halp_float/halp"
+#export PYTHONPATH="$PYTHONPATH:/Users/Jian/Data/research/halp_float/halp"

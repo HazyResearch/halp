@@ -5,7 +5,7 @@ from halp.utils.launching_utils import run_experiment
 
 
 if __name__ == "__main__":
-    exp_name = "lenet_hyper_sweep_2018_nov_13"
+    exp_name = "logreg_hyper_sweep_2018_nov_13"
     n_epochs = 100
     # n_epochs = 2
     batch_size = 128
