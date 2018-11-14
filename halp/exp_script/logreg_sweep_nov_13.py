@@ -5,13 +5,13 @@ from halp.utils.launching_utils import run_experiment
 
 
 if __name__ == "__main__":
-    exp_name = "lenet_hyper_sweep_2018_nov_13"
+    exp_name = "logreg_hyper_sweep_2018_nov_13"
     n_epochs = 100
     # n_epochs = 2
-    batch_size = 128
+    batch_size = 100
     n_classes = 10
-    l2_reg_list = [5e-4]
-    lr_list = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5]
+    l2_reg_list = [1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
+    lr_list = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
     # momentum_list = [0.9]
     # seed_list = [1,]
     seed_list = [1, 2, 3]
@@ -24,9 +24,9 @@ if __name__ == "__main__":
     # opt_algo_list = ["lp-sgd", "lp-svrg"]
 
     rounding_list = ["near"]
-    T_list = [391]
-    dataset = "cifar10"
-    model = "lenet"
+    T_list = [600]
+    dataset = "mnist"
+    model = "logreg"
     run_option = "dryrun"
     # run_option = "run"
     run_experiment(
