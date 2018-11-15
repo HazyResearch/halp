@@ -1,6 +1,12 @@
 import numpy as np 
 import os
 
+iter_thresh = 391 * 100
+epoch_thresh = 100
+
+def running_mean(x, N):
+    cumsum = np.cumsum(np.insert(x, 0, 0)) 
+    return (cumsum[N:] - cumsum[:-N]) / N 
 
 def get_immediate_subdirectories(a_dir):
     return [name for name in os.listdir(a_dir)
@@ -29,7 +35,10 @@ def get_test_acc(file_name):
 		for line in f.readlines():
 			if "Test metric" in line:
 				val = line.split("acc: ")[1].split(" ")[0]
-				test_acc.append(float(val))
+				try:
+					test_acc.append(float(val))
+				except:
+					print("test acc problematic value ", val)
 	return test_acc
 
 def get_train_loss(file_name):
@@ -37,8 +46,14 @@ def get_train_loss(file_name):
 	with open(file_name, "r") as f:
 		for line in f.readlines():
 			if "train loss epoch" in line:
-				val = line.split("loss:")[1].split(" ")[0]
-				train_loss.append(float(val))
+				#val = line.split("loss:")[1].split(" ")[0]
+				#print("test ", val)
+				try:
+					val = line.split("loss:")[1].split(" ")[0]
+					train_loss.append(float(val))
+				except:
+                                        val = line.split("loss: ")[1].split(" ")[0]
+                                        train_loss.append(float(val))
 	return train_loss
 
 def get_grad_norm(file_name):
@@ -120,15 +135,49 @@ def get_config_with_best_test_acc(top_directory, pattern_list, seed_list=[1, 2, 
 			else:
 				ave_acc += np.array(acc)
 		ave_acc /= len(seed_list)
+		ave_acc = ave_acc[:epoch_thresh]
 		if np.max(ave_acc) > best_test_acc:
 			best_test_acc = np.max(ave_acc)
 			best_config = pattern
 			best_acc_epoch_id = np.argmax(ave_acc)
 	print("best test acc and config ", best_test_acc, best_acc_epoch_id, best_config)
 
+def get_config_with_best_train_loss(top_directory, pattern_list, seed_list=[1, 2, 3]):
+        best_train_loss = np.finfo(dtype=np.float64).max 
+        best_config = ""
+        best_loss_epoch_id = 0
+        for pattern in pattern_list:
+                ave_loss = None
+                try:
+                    for seed in seed_list:
+                            #print(pattern, seed)
+                            dir = pattern + "seed_" + str(seed)
+                            if not os.path.exists(top_directory + "/" + dir + "/run.log"):
+                                    print(top_directory + "/" + dir + "/run.log missing!" )
+                                    continue
+                            loss = get_train_loss(top_directory + "/" + dir + "/run.log")
+                            if len(loss) == 0:
+                                    print(top_directory + "/" + dir + "/run.log has 0 train loss record" )
+                                    continue
+                            if ave_loss is None:
+                                     ave_loss = np.array(loss)
+                            else:
+                                     ave_loss += np.array(loss)
+                    ave_loss /= len(seed_list)
+                    ave_loss = ave_loss[:iter_thresh]
+                    ave_loss = running_mean(ave_loss, N=100)		
+                    #print(pattern, np.min(ave_loss))
+                    if np.min(ave_loss) <  best_train_loss:
+                            best_train_loss = np.min(ave_loss)
+                            best_config = pattern
+                            best_loss_epoch_id = np.argmin(ave_loss)
+                except:
+                        continue
+        print("best train loss and config ", best_train_loss, best_loss_epoch_id, best_config)
+
 
 if __name__ == "__main__":
-	top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/logreg_hyper_sweep_2018_nov_13/"
+	top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_13/"
 	all_directories = get_immediate_subdirectories(top_directory)
 	all_directories = get_subdirectories_patterns_without_seed(all_directories)
 
@@ -137,37 +186,42 @@ if __name__ == "__main__":
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.0", "_bc-svrg"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.9", "_lp-svrg"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.0", "_lp-svrg"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.9", "_svrg"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.0", "_svrg"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
-
+	get_config_with_best_train_loss(top_directory, dir_list)
     #########################################################
 
 	pattern_list = ["momentum_0.9", "_bc-sgd"]
@@ -175,37 +229,42 @@ if __name__ == "__main__":
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.0", "_bc-sgd"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.9", "_lp-sgd"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.0", "_lp-sgd"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.9", "_sgd"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	pattern_list = ["momentum_0.0", "_sgd"]
 	print("\n")
 	print(pattern_list)
 	dir_list = filter_directory_names(all_directories, pattern_list)
 	get_config_with_best_test_acc(top_directory, dir_list)
-
+	get_config_with_best_train_loss(top_directory, dir_list)
 
 	# file_name = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_12/opt_bc-svrg_momentum_0.0_lr_0.01_l2_reg_0.0005_seed_1/run.log"
 	# print(file_name)

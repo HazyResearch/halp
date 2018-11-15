@@ -116,7 +116,7 @@ def train_non_bit_center_optimizer(model,
                 optimizer.step()
             train_loss_list.append(train_loss.item())
             logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
-                        str(i) + " loss:" + str(train_loss.item()) +
+                        str(i) + " loss: " + str(train_loss.item()) +
                         " grad_norm: " + str(grad_norm) + " acc: " +
                         str(train_acc))
         logger.info("Finished train epoch " + str(epoch_id))
