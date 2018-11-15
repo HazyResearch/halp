@@ -8,7 +8,8 @@ def get_immediate_subdirectories(a_dir):
 
 def get_subdirectories_patterns_without_seed(dir_list):
 	pattern_list = [x.split("seed_")[0] for x in dir_list]
-	pattern_set = set(pattern_list)
+	pattern_set = list(set(pattern_list))
+	return pattern_set
 
 def filter_directory_names(dir_list, pattern_list):
 	filtered_list = []
@@ -60,7 +61,7 @@ def get_config_with_best_test_acc(top_directory, pattern_list, seed_list=[1, 2, 
 			if not os.path.exists(top_directory + "/" + dir + "/run.log"):
 				print(top_directory + "/" + dir + "/run.log missing!" )
 				continue
-			acc = get_results(top_directory + "/" + dir + "/run.log")
+			acc = get_test_acc(top_directory + "/" + dir + "/run.log")
 			if len(acc) == 0:
 				print(top_directory + "/" + dir + "/run.log has 0 test accuracy record" )
 				continue
@@ -70,16 +71,16 @@ def get_config_with_best_test_acc(top_directory, pattern_list, seed_list=[1, 2, 
 				ave_acc += np.array(acc)
 		ave_acc /= len(seed_list)
 		if np.max(ave_acc) > best_test_acc:
-			best_test_acc = ave_acc
+			best_test_acc = np.max(ave_acc)
 			best_config = pattern
 			best_acc_epoch_id = np.argmax(ave_acc)
 	print("best test acc and config ", best_test_acc, best_acc_epoch_id, best_config)
 
 
 if __name__ == "__main__":
-	top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_13/"
+	top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/logreg_hyper_sweep_2018_nov_13/"
 	all_directories = get_immediate_subdirectories(top_directory)
-
+	all_directories = get_subdirectories_patterns_without_seed(all_directories)
 
 	pattern_list = ["momentum_0.9", "_bc-svrg"]
 	print("\n")
