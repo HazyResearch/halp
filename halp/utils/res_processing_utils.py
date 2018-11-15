@@ -23,7 +23,6 @@ def filter_directory_names(dir_list, pattern_list):
 			filtered_list.append(dir)
 	return filtered_list
 
-
 def get_test_acc(file_name):
 	test_acc = []
 	with open(file_name, "r") as f:
@@ -32,6 +31,57 @@ def get_test_acc(file_name):
 				val = line.split("acc: ")[1].split(" ")[0]
 				test_acc.append(float(val))
 	return test_acc
+
+def get_train_loss(file_name):
+	train_loss = []
+	with open(file_name, "r") as f:
+		for line in f.readlines():
+			if "train loss epoch" in line:
+				val = line.split("loss:")[1].split(" ")[0]
+				train_loss.append(float(val))
+	return train_loss
+
+def get_grad_norm(file_name):
+	grad_norm = []
+	with open(file_name, "r") as f:
+		for line in f.readlines():
+			if "train loss epoch" in line:
+				val = line.split("loss:")[1].split(" ")[0]
+				grad_norm.append(float(val))
+	return grad_norm
+
+def get_test_loss(file_name):
+	test_loss = []
+	with open(file_name, "r") as f:
+		for line in f.readlines():
+			if "Test metric" in line:
+				val = line.split("loss: ")[1].split(" ")[0]
+				test_loss.append(float(val))
+	return test_loss
+
+def get_ave_metric(pattern, top_directory, seed_list=[1,2,3], metric="test_acc"):
+	curve = None
+	for seed in seed_list:
+		dir = pattern + "seed_" + str(seed)
+		if not os.path.exists(top_directory + "/" + dir + "/run.log"):
+			print(top_directory + "/" + dir + "/run.log missing!" )
+			continue
+		if metric == "test_acc":
+			values = get_test_acc(top_directory + "/" + dir + "/run.log")
+		elif metric == "train_loss":
+			values = get_train_loss(top_directory + "/" + dir + "/run.log")
+		elif metric == "test_loss":
+			values = get_test_loss(top_directory + "/" + dir + "/run.log")
+		elif metric == "grad_norm":
+			values = get_grad_norm(top_directory + "/" + dir + "/run.log")
+		else:
+			raise Exception(metric + "is not supported!")
+		if curves is None:
+			curve = np.array(values)
+		else:
+			curve += np.array(values)
+	return curve / float(len(seed_list))
+
 
 # def get_config_with_best_test_acc(top_directory, dir_list):
 # 	best_test_acc = 0.0
