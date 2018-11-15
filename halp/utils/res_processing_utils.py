@@ -46,7 +46,7 @@ def get_grad_norm(file_name):
 	with open(file_name, "r") as f:
 		for line in f.readlines():
 			if "train loss epoch" in line:
-				val = line.split("loss:")[1].split(" ")[0]
+				val = line.split("grad_norm: ")[1].split(" ")[0]
 				grad_norm.append(float(val))
 	return grad_norm
 
@@ -76,7 +76,7 @@ def get_ave_metric(pattern, top_directory, seed_list=[1,2,3], metric="test_acc")
 			values = get_grad_norm(top_directory + "/" + dir + "/run.log")
 		else:
 			raise Exception(metric + "is not supported!")
-		if curves is None:
+		if curve is None:
 			curve = np.array(values)
 		else:
 			curve += np.array(values)
