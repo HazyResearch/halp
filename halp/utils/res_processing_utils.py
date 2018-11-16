@@ -165,7 +165,7 @@ def get_config_with_best_train_loss(top_directory, pattern_list, seed_list=[1, 2
                                      ave_loss += np.array(loss)
                     ave_loss /= len(seed_list)
                     ave_loss = ave_loss[:iter_thresh]
-                    ave_loss = running_mean(ave_loss, N=100)		
+                    ave_loss = running_mean(ave_loss, N=1000)		
                     #print(pattern, np.min(ave_loss))
                     if np.min(ave_loss) <  best_train_loss:
                             best_train_loss = np.min(ave_loss)
