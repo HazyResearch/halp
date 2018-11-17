@@ -44,14 +44,22 @@ class LogisticRegression(BitCenterModule):
         raise Exception("dtype not supported")
     self.dtype = dtype
 
-  def forward(self, x, y):
+  def forward(self, x, y, test=False):
     if len(list(x.size())) != 2:
         x = x.view(x.size(0), -1)
     self.output = self.linear(x)
     if len(list(y.size() ) ) == 2:
         y = y.squeeze()
-    self.loss = self.criterion(self.output, y)
-    return self.loss
+    # self.loss = self.criterion(self.output, y)
+    # return self.loss
+    if test:
+        return self.output
+    else:
+        self.loss = self.criterion(self.output, y)
+        if isinstance(self.criterion, BitCenterCrossEntropy) \
+            and self.criterion.do_offset == False:
+            self.output = self.output + self.criterion.input_lp
+        return self.loss
 
   def predict(self, x):
     if len(list(x.size())) != 2:

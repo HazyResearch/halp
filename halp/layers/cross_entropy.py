@@ -127,6 +127,8 @@ class BitCenterCrossEntropy(BitCenterLayer):
         # Need to test do_offset mode whether gradient is updated properly
         input_lp = self.input_cache[self.cache_iter:(
             self.cache_iter + input.size(0))].cuda()
+        # give a handle to access input_lp from outside
+        self.input_lp = input_lp
         # note here grad_output_lp is actually the grad_input offset.
         # This is because we want to utilize the existing infra in bitCenterLayer
         grad_output_lp = \

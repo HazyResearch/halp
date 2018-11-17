@@ -6,6 +6,7 @@ import math
 from halp.optim.bit_center_sgd import BitCenterOptim
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
+from halp.utils.utils import DOUBLE_PREC_DEBUG
 
 
 def get_grad_norm(optimizer, model):
@@ -13,11 +14,13 @@ def get_grad_norm(optimizer, model):
     note this function only supports a single learning rate in the optimizer
     This is because the gradient offset is actually the lr * grad offset.
     We need to recover it here
+    Note this should be used after step function of the optimizers
     """
     norm = 0.0
+    weight_decay = optimizer.param_groups[0]["weight_decay"]
+    lr = optimizer.param_groups[0]["lr"]
     if isinstance(optimizer, BitCenterOptim):
         named_delta_parameters = optimizer.get_named_delta_parameters()
-        lr = optimizer.param_groups[0]["lr"]
         for p_name, p in named_delta_parameters:
             # note we need to make sure this function is properly used
             # as the optimizer's get_single_grad_offset is used and it
@@ -28,15 +31,22 @@ def get_grad_norm(optimizer, model):
             cache = optimizer.grad_cache[p_name.split("_delta")[0]]
             grad_offset = optimizer.get_single_grad_offset(cache)
             grad_delta = p.grad.data
+            # note the optimizer has already add delta part of decay to grad variable
             norm += torch.sum((grad_delta.type(torch.FloatTensor) \
                 + grad_offset.type(torch.FloatTensor) / lr)**2).item()
             # print("doing bc grad norm ", p_name, norm, torch.sum(grad_offset**2).item())
+            print(p_name, torch.sum(grad_delta.type(torch.FloatTensor)**2).item(),
+                torch.sum((grad_offset.type(torch.FloatTensor) / lr)**2).item())
     else:
         for p_name, p in model.named_parameters():
             if p.requires_grad:
+                # note the optimizer has already add delta part of decay to grad variable
                 norm += torch.sum(p.grad.data.type(torch.FloatTensor)
                                   **2).item()
             # print("doing non bc grad norm", p_name, norm)
+            print(p_name, torch.sum(p.grad.data.type(torch.FloatTensor)
+                                  **2).item())
+
     return math.sqrt(norm)
 
 
@@ -52,6 +62,8 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
             X = model.cast_func(X)
         # if len(list(X.size())) != 2:
         #     X = X.view(X.size(0), -1)
+        if DOUBLE_PREC_DEBUG:
+            X = X.double()
         pred, output = model.predict(X)
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
@@ -62,7 +74,7 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
         "Test metric acc: " + str(correct_cnt / float(sample_cnt)) +
         " loss: " +
         str(cross_entropy_accum / float(sample_cnt) +
-            model.reg_lambda * model.get_trainable_param_squared_norm()))
+            0.5 * model.reg_lambda * model.get_trainable_param_squared_norm()))
     return (correct_cnt / float(sample_cnt),
             cross_entropy_accum / float(sample_cnt))
 
@@ -91,11 +103,13 @@ def train_non_bit_center_optimizer(model,
             if dtype == "bc":
                 raise Exception("This function can only run non-bc optimizers")
             optimizer.zero_grad()
+            if DOUBLE_PREC_DEBUG:
+                X = X.double()
             train_loss = model(X, Y)
             train_pred = model.output.data.cpu().numpy().argmax(axis=1)
-            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(Y.size(0))
+            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
+                Y.size(0))
             train_loss.backward()
-            grad_norm = get_grad_norm(optimizer, model)
             if optimizer.__class__.__name__ == "SVRG":
 
                 def svrg_closure(data=X, target=Y):
@@ -107,6 +121,8 @@ def train_non_bit_center_optimizer(model,
                     if dtype == "bc":
                         raise Exception(
                             "This function can only run non-bc optimizers")
+                    if DOUBLE_PREC_DEBUG:
+                        data = data.double()
                     loss = model(data, target)
                     loss.backward()
                     return loss
@@ -114,12 +130,15 @@ def train_non_bit_center_optimizer(model,
                 optimizer.step(svrg_closure)
             else:
                 optimizer.step()
+            grad_norm = get_grad_norm(optimizer, model)
             param_norm = model.get_trainable_param_squared_norm()
-            train_loss_list.append(train_loss.item() + model.reg_lambda * param_norm)
+            train_loss_list.append(train_loss.item() +
+                                   0.5 * model.reg_lambda * param_norm)
             logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
-                        str(i) + " loss: " + str(train_loss.item() + model.reg_lambda * param_norm) +
+                        str(i) + " loss: " + str(train_loss_list[-1]) +
                         " grad_norm: " + str(grad_norm) + " acc: " +
-                        str(train_acc) + " regularizer: " + str(model.reg_lambda * param_norm))
+                        str(train_acc) + " regularizer: " +
+                        str(0.5 * model.reg_lambda * param_norm))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
@@ -150,6 +169,8 @@ def train_bit_center_optimizer(model,
                     optimizer.zero_grad()
                     if use_cuda:
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
+                    if DOUBLE_PREC_DEBUG:
+                        X_fp = X_fp.double()
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
@@ -164,21 +185,26 @@ def train_bit_center_optimizer(model,
                     "This training function does not support dtype other than bc"
                 )
             optimizer.zero_grad()
+            if DOUBLE_PREC_DEBUG:
+                X = X.double()
             train_loss = model(X, Y)
             train_pred = model.output.data.cpu().numpy().argmax(axis=1)
-            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(Y.size(0))
+            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
+                Y.size(0))
             train_loss.backward()
-            grad_norm = get_grad_norm(optimizer, model)
             optimizer.step_lp()
+            grad_norm = get_grad_norm(optimizer, model)
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
             param_norm = model.get_trainable_param_squared_norm()
-            train_loss_list.append(train_loss.item() + model.reg_lambda * param_norm)
+            train_loss_list.append(train_loss.item() +
+                                   0.5 * model.reg_lambda * param_norm)
             logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
-                        str(i) + " loss: " + str(train_loss.item() + model.reg_lambda * param_norm) +
+                        str(i) + " loss: " + str(train_loss_list[-1]) +
                         " grad_norm: " + str(grad_norm) + " acc: " +
-                        str(train_acc) + " regularizer: " + str(model.reg_lambda * param_norm))
+                        str(train_acc) + " regularizer: " +
+                        str(0.5 * model.reg_lambda * param_norm))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)

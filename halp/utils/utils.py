@@ -7,7 +7,7 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
-
+DOUBLE_PREC_DEBUG=False
 
 def single_to_half_det(tensor):
     return tensor.half()

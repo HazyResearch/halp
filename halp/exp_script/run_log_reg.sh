@@ -86,9 +86,18 @@
 # python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-sgd' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_sgd.log
 # python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-sgd' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_bc_sgd_near.log
 
-python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_svrg.log
-python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_bc_svrg_near.log
+# python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp32_svrg.log
+# python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_svrg.log
+# python run_models.py --n-epochs=100 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='near' -T=391 --dataset=cifar10 --model=lenet --cuda 2>&1 | tee test/lenet_fp16_bc_svrg_near.log
 
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=100 --batch-size=128 --reg=0.0 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=lenet  --cuda
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=100 --batch-size=128 --reg=0.0 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=lenet  --cuda
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=100 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=391  --dataset=cifar10  --model=lenet  --cuda
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=100 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=391  --dataset=cifar10  --model=lenet  --cuda
 
 
 

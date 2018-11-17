@@ -140,6 +140,9 @@ class LeNet(BitCenterModule):
             return out
         else:
             self.loss = self.criterion(out, y)
+            if isinstance(self.criterion, BitCenterCrossEntropy) \
+                and self.criterion.do_offset == False:
+                self.output = self.output + self.criterion.input_lp
             return self.loss
 
     def check_layer_status(self, do_offset=True):

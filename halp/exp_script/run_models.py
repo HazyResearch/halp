@@ -26,6 +26,8 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 import time
+# the following is for setting up double precision based debugging
+from halp.utils.utils import DOUBLE_PREC_DEBUG
 
 
 parser = argparse.ArgumentParser()
@@ -94,6 +96,9 @@ elif args.rounding == "void":
 else:
     raise Exception("The rounding method is not supported!")
 
+if DOUBLE_PREC_DEBUG:
+    assert args.cast_func == void_cast_func
+
 # TODO resolve this for trainin procedure and avoid this check
 print("dataset stats: n_batch, batch_size, T ", len(train_loader), args.batch_size, args.T)
 if len(train_loader) != args.T:
@@ -129,6 +134,9 @@ if args.cuda:
     # note as the cache are set up in the first foward pass
     # the location of the cache is not controled by the cuda() here
     model.cuda()
+
+if DOUBLE_PREC_DEBUG:
+    model.double()
 
 # setup optimizer
 params_name = [x for x, y in model.named_parameters()]
@@ -179,6 +187,12 @@ elif args.solver == "bc-svrg":
 else:
     raise Exception(args.solver + " is an unsupported optimizer.")
 
+try:
+    print("regularizer ", model.reg_lambda, optimizer.weight_decay)
+except:
+    for param_group in optimizer.param_groups:
+        assert len(optimizer.param_groups) == 1
+        print("regularizer ", param_group["weight_decay"])
 
 start_time = time.time()
 # run training procedure

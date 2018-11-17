@@ -44,14 +44,17 @@ class BitCenterModule(nn.Module):
         state_dict = self.state_dict()
         param_norm = 0.0
         for name, p in self.named_parameters():
-            if (not name.endswith("_delta")) or (p.requires_grad == False):
+            if (name.endswith("_delta")) \
+                or (name.endswith("_lp")) \
+                or (p.requires_grad == False):
                 continue
-            if name.split("_delta")[0] not in state_dict.keys():
-                raise Exception(name +
-                                " is not found in the module state dict")
-            p_fp = state_dict[name.split("_delta")[0]]
-            param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_fp.data.type(torch.FloatTensor))**2).item()
-            # print("name ", name, param_norm)
+            if name + "_delta" in state_dict.keys():
+                # raise Exception(name +
+                #                 " is not found in the module state dict")
+                p_delta = state_dict[name + "_delta"]
+                param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_delta.data.type(torch.FloatTensor))**2).item()
+            else:
+                param_norm += torch.sum(p.data.type(torch.FloatTensor)**2).item()
         return param_norm
 
 
