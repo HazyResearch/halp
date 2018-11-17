@@ -14,7 +14,7 @@ def get_grad_norm(optimizer, model):
     note this function only supports a single learning rate in the optimizer
     This is because the gradient offset is actually the lr * grad offset.
     We need to recover it here
-    Note this should be used after step function of the optimizers
+    Note this should be used before step function of the optimizers
     """
     norm = 0.0
     weight_decay = optimizer.param_groups[0]["weight_decay"]
@@ -33,19 +33,21 @@ def get_grad_norm(optimizer, model):
             grad_delta = p.grad.data
             # note the optimizer has already add delta part of decay to grad variable
             norm += torch.sum((grad_delta.type(torch.FloatTensor) \
+                + weight_decay * p.data.type(torch.FloatTensor) \
                 + grad_offset.type(torch.FloatTensor) / lr)**2).item()
             # print("doing bc grad norm ", p_name, norm, torch.sum(grad_offset**2).item())
-            print(p_name, torch.sum(grad_delta.type(torch.FloatTensor)**2).item(),
-                torch.sum((grad_offset.type(torch.FloatTensor) / lr)**2).item())
+            # print(p_name, torch.sum(grad_delta.type(torch.FloatTensor)**2).item(),
+            #     torch.sum((grad_offset.type(torch.FloatTensor) / lr)**2).item())
     else:
         for p_name, p in model.named_parameters():
             if p.requires_grad:
                 # note the optimizer has already add delta part of decay to grad variable
-                norm += torch.sum(p.grad.data.type(torch.FloatTensor)
+                norm += torch.sum((p.grad.data.type(torch.FloatTensor) \
+                                  + weight_decay * p.data.type(torch.FloatTensor))
                                   **2).item()
             # print("doing non bc grad norm", p_name, norm)
-            print(p_name, torch.sum(p.grad.data.type(torch.FloatTensor)
-                                  **2).item())
+            # print(p_name, torch.sum(p.grad.data.type(torch.FloatTensor)
+            #                       **2).item())
 
     return math.sqrt(norm)
 
@@ -110,6 +112,7 @@ def train_non_bit_center_optimizer(model,
             train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
                 Y.size(0))
             train_loss.backward()
+            grad_norm = get_grad_norm(optimizer, model)
             if optimizer.__class__.__name__ == "SVRG":
 
                 def svrg_closure(data=X, target=Y):
@@ -130,7 +133,6 @@ def train_non_bit_center_optimizer(model,
                 optimizer.step(svrg_closure)
             else:
                 optimizer.step()
-            grad_norm = get_grad_norm(optimizer, model)
             param_norm = model.get_trainable_param_squared_norm()
             train_loss_list.append(train_loss.item() +
                                    0.5 * model.reg_lambda * param_norm)
@@ -192,8 +194,8 @@ def train_bit_center_optimizer(model,
             train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
                 Y.size(0))
             train_loss.backward()
-            optimizer.step_lp()
             grad_norm = get_grad_norm(optimizer, model)
+            optimizer.step_lp()
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
