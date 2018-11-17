@@ -40,10 +40,10 @@ class BitCenterSVRG(BitCenterOptim):
             minibatch_size=minibatch_size,
             T=T)
 
-    def setup_single_grad_cache(self, grad_shape):
+    def setup_single_grad_cache(self, grad_shape, dtype):
         logger.info("setup fp accum for full grad")
         cache_shape = grad_shape
-        return torch.Tensor(np.zeros(cache_shape)).cuda()
+        return torch.Tensor(np.zeros(cache_shape)).type(dtype).cuda()
 
     def update_single_grad_cache(self, grad, cache):
         cache.add_(grad)

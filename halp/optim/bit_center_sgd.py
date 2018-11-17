@@ -54,7 +54,7 @@ class BitCenterOptim(SGD):
         self.setup_grad_cache()
         self.T = T
 
-    def setup_single_grad_cache(self):
+    def setup_single_grad_cache(self, grad_shape, dtype):
         # we assume the size of the first dimension is the minibatch size
         pass
 
@@ -68,7 +68,7 @@ class BitCenterOptim(SGD):
                     self.grad_cache[p_name] = None
                     continue
                 grad_shape = list(p.size())
-                cache = self.setup_single_grad_cache(grad_shape)
+                cache = self.setup_single_grad_cache(grad_shape, dtype=p.dtype)
                 self.grad_cache[p_name] = cache
                 logger.info(p_name + " cache setup.")
         self.cache_iter = 0
@@ -242,9 +242,9 @@ class BitCenterSGD(BitCenterOptim):
             minibatch_size=minibatch_size,
             T=T)
 
-    def setup_single_grad_cache(self, grad_shape):
+    def setup_single_grad_cache(self, grad_shape, dtype):
         cache_shape = [self.n_minibatch_per_epoch] + grad_shape
-        return self.cast_func(torch.Tensor(np.zeros(cache_shape)).cpu()).cpu()
+        return self.cast_func(torch.Tensor(np.zeros(cache_shape)).type(dtype).cpu()).cpu()
 
     def update_single_grad_cache(self, grad, cache):
         # the input grad is actually grad * lr in function update_grad_cache
