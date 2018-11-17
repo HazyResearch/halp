@@ -140,9 +140,6 @@ class LeNet(BitCenterModule):
             return out
         else:
             self.loss = self.criterion(out, y)
-            # add the regularizer to the final loss
-            self.loss += self.reg_lambda * self.get_trainable_param_squared_norm(
-            )
             return self.loss
 
     def check_layer_status(self, do_offset=True):

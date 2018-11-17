@@ -114,11 +114,12 @@ def train_non_bit_center_optimizer(model,
                 optimizer.step(svrg_closure)
             else:
                 optimizer.step()
-            train_loss_list.append(train_loss.item())
+            param_norm = model.get_trainable_param_squared_norm()
+            train_loss_list.append(train_loss.item() + model.reg_lambda * param_norm)
             logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
-                        str(i) + " loss: " + str(train_loss.item()) +
+                        str(i) + " loss: " + str(train_loss.item() + model.reg_lambda * param_norm) +
                         " grad_norm: " + str(grad_norm) + " acc: " +
-                        str(train_acc))
+                        str(train_acc) + " regularizer: " + str(model.reg_lambda * param_norm))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
@@ -169,14 +170,15 @@ def train_bit_center_optimizer(model,
             train_loss.backward()
             grad_norm = get_grad_norm(optimizer, model)
             optimizer.step_lp()
-            train_loss_list.append(train_loss.item())
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1
+            param_norm = model.get_trainable_param_squared_norm()
+            train_loss_list.append(train_loss.item() + model.reg_lambda * param_norm)
             logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
-                        str(i) + " loss: " + str(train_loss.item()) +
+                        str(i) + " loss: " + str(train_loss.item() + model.reg_lambda * param_norm) +
                         " grad_norm: " + str(grad_norm) + " acc: " +
-                        str(train_acc))
+                        str(train_acc) + " regularizer: " + str(model.reg_lambda * param_norm))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)
