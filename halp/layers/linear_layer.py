@@ -83,8 +83,10 @@ class BitCenterLinear(BitCenterLayer, Linear):
         # weight_delta is the delta tensor in the algorithm while weight_lp is the cached
         # lp version of weight offset
         self.setup_bit_center_vars()
+        # make sure the variables are on gpu as fp16 is only supported on gpu
         self.cuda()
         self.reset_parameters_bit_center()
+        # register backward hook to update gradient caches for output grad
         self.register_backward_hook(self.update_grad_output_cache)
 
     def update_grad_output_cache(self, self1, input, output):

@@ -44,12 +44,11 @@ def get_grad_norm(optimizer, model):
         if optimizer.__class__.__name__ == "SVRG":
             for p_name, p in model.named_parameters():
                 if p.requires_grad:
-                    # note the optimizer has already add delta part of decay to grad variable
+                    # note the optimizer has already add weight decay to grad variable
                     norm += torch.sum(p.grad.data.type(torch.FloatTensor)**2).item()
         else:
             for p_name, p in model.named_parameters():
                 if p.requires_grad:
-                    # note the optimizer has already add delta part of decay to grad variable
                     norm += torch.sum((p.grad.data.type(torch.FloatTensor) \
                                       + weight_decay * p.data.type(torch.FloatTensor))
                                       **2).item()

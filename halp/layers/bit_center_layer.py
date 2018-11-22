@@ -73,6 +73,8 @@ class BitCenterLayer(BitCenterModule):
     a single bias variable, like conv and linear layer. For
     other layers such as the cross entropy layer, they can be
     implemented by overwriting some of the member functions.
+    For an exampla instantiation of bit center layers,
+    please refer to the BitCenterLinear layer in bit_center_layer.py
     '''
 
     def __init__(self,
