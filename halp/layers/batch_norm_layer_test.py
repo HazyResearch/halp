@@ -10,6 +10,7 @@ from torch.autograd.gradcheck import get_numerical_jacobian, iter_tensors, make_
 from halp.layers.bit_center_layer_test import TestBitCenterLayer
 import logging
 import sys
+import copy
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
@@ -178,6 +179,92 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         ], [
             input_delta,
         ]
+
+    def get_numerical_grad(self,
+                           layer,
+                           input_fp,
+                           input_delta,
+                           perturb_eps,
+                           target=None):
+        # as the running stats change in every forward call,
+        # the finite difference approach in bit_center_layer_test.py
+        # would not work properly. Instead, we use the original batchnorm2d
+        # layer, generate grad and compare to the one we got using 
+        # bit center layer.
+        grad_list = []
+        layer.set_mode(do_offset=True)
+        param_dict = layer.state_dict()
+        # update the offset variable
+        for name, param in layer.named_parameters():
+            if name.endswith("_delta"):
+                p_offset = param_dict[name.split("_delta")[0]]
+                p_offset.data.add_(param)
+        param_dict = layer.state_dict()
+        layer_orig = torch.nn.BatchNorm2d(num_features=layer.num_features, track_running_stats=True).cuda().double()
+        for name, param in layer_orig.named_parameters():
+            param.data.copy_(param_dict[name])
+        layer_orig.running_mean.data.copy_(layer.running_mean.data)
+        layer_orig.running_var.data.copy_(layer.running_var.data)
+        # turn off running stat update for this batch to sync with the bc layer
+        layer_orig.train() 
+        input = []
+        for i, (x, y) in enumerate(zip(input_fp, input_delta)):
+            input.append(Parameter(x + y, requires_grad=True))
+
+        # print("outside check internal1 ", layer_orig.weight, layer_orig.bias, layer_orig.running_mean, layer_orig.running_var)
+        # print("outside input ", input[0])
+
+        print("\noutside check internal1 pre ", layer_orig.weight, layer_orig.bias, layer_orig.running_mean, layer_orig.running_var)
+
+
+        output_final = layer_orig(*input)
+
+        # output_final2 = layer_orig(*input)
+
+        # print("double check outside ", output_final, output_final2)
+
+
+        loss = 0.5 * torch.sum(output_final**2)
+        loss.backward()
+
+        print("\noutside check internal1 ", layer_orig.weight, layer_orig.bias, layer_orig.running_mean, layer_orig.running_var, input[0], output_final)
+
+
+        # print("outside check internal ", layer_orig.weight, layer_orig.bias, layer_orig.running_mean, layer_orig.running_var)
+        # print("outside ", input[0].grad.data, layer_orig.weight.grad.data, layer_orig.bias.grad.data)
+        # print("outside ", input[0].grad.data)
+
+
+        grad_list.append(input[0].grad.data.clone())
+        grad_list.append(layer_orig.weight.grad.data.clone())
+        grad_list.append(layer_orig.bias.grad.data.clone())
+        return output_final, grad_list
+
+
+    def get_analytical_grad(self, layer1, input_fp, input_delta, target=None):
+        # this function get the analytical grad with respect to parameters and input
+        # it calls get_analytical_param_grad to get grad wrt to paramters.
+        # the framework in the function is generic to all layers
+        layer = copy.deepcopy(layer1)
+        layer.set_mode(do_offset=True)
+        grad_list = []
+        output_fp = layer(*input_fp)
+        output_fp_copy = output_fp.data.clone()
+        loss_fp = torch.sum(0.5 * output_fp * output_fp)
+        loss_fp.backward()
+        grad_input_fp = layer.input_grad_for_test.clone()
+
+        layer.set_mode(do_offset=False)
+        output_lp = layer(*input_delta)
+        loss_lp = torch.sum(0.5 * output_lp * output_lp)
+        loss_lp.backward()
+        grad_input_delta = layer.input_grad_for_test.clone()
+        # as we only have 1 minibatch, we can directly use layer.grad_output_cache
+        input_grad = grad_input_fp + grad_input_delta
+        grad_list.append(input_grad)
+
+        grad_list += self.get_analytical_param_grad(layer)
+        return output_lp + output_fp, grad_list
 
 
 if __name__ == "__main__":

@@ -135,7 +135,7 @@ class TestBitCenterLayer(HalpTest):
         torch.manual_seed(0)
         torch.cuda.manual_seed_all(0)
         for bias in [True, False]:
-            for i in range(5):
+            for i in range(1):
                 config = self.get_config(type="grad_check")
                 config["bias"] = bias
                 config["do_double"] = True
@@ -157,6 +157,9 @@ class TestBitCenterLayer(HalpTest):
                                               numerical_grads):
                     if (ana_grad is None) and (num_grad is None):
                         continue
+
+                    # print("outside checking", ana_grad, num_grad)
+
 
                     np.testing.assert_allclose(
                         ana_grad.data.cpu().numpy().ravel(),
