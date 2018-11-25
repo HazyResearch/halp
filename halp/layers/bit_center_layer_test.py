@@ -158,9 +158,6 @@ class TestBitCenterLayer(HalpTest):
                     if (ana_grad is None) and (num_grad is None):
                         continue
 
-                    # print("outside checking", ana_grad, num_grad)
-
-
                     np.testing.assert_allclose(
                         ana_grad.data.cpu().numpy().ravel(),
                         num_grad.data.cpu().numpy().ravel(),
@@ -182,64 +179,64 @@ class TestBitCenterLayer(HalpTest):
         self.CheckLayerTensorProperty(t_list)
         self.CheckLayerTensorGradProperty(t_list)
 
-    # def test_layer_forward_backward_precedures(self):
-    #     # We test the behavior of layers in a multiple epoch (each with multiple minibatch setting).
-    #     # Along with this, we will also test the property of tensors
-    #     # (including param and cache along the way).
-    #     # check if the behavior of BitCentering linear layer is going as expected for forward
-    #     # the backward behavior is guaranteed by
-    #     # bit center linear function test TestBitCenterLinearFuncGradientCheck
-    #     for use_bias in [True, False]:
-    #         config = self.get_config(type="fw_bw_proc")
-    #         config["bias"] = use_bias
-    #         layer = self.prepare_layer(**config)
-    #         cast_func = config["cast_func"]
-    #         n_sample = config["n_train_sample"]
-    #         minibatch_size = config["batch_size"]
-    #         n_minibatch = int(
-    #             np.ceil(config["n_train_sample"] / config["batch_size"]))
+    def test_layer_forward_backward_precedures(self):
+        # We test the behavior of layers in a multiple epoch (each with multiple minibatch setting).
+        # Along with this, we will also test the property of tensors
+        # (including param and cache along the way).
+        # check if the behavior of BitCentering linear layer is going as expected for forward
+        # the backward behavior is guaranteed by
+        # bit center linear function test TestBitCenterLinearFuncGradientCheck
+        for use_bias in [True, False]:
+            config = self.get_config(type="fw_bw_proc")
+            config["bias"] = use_bias
+            layer = self.prepare_layer(**config)
+            cast_func = config["cast_func"]
+            n_sample = config["n_train_sample"]
+            minibatch_size = config["batch_size"]
+            n_minibatch = int(
+                np.ceil(config["n_train_sample"] / config["batch_size"]))
 
-    #         # test fp mode
-    #         layer.set_mode(do_offset=True)
-    #         layer.cuda()
-    #         input_tensor_list = []
-    #         if (cast_func == single_to_half_det) or (
-    #                 cast_func == single_to_half_stoc):
-    #             self.check_layer_param_and_cache(layer)
-    #         for i in range(n_minibatch):
-    #             start_idx = i * minibatch_size
-    #             end_idx = min((i + 1) * minibatch_size, n_sample)
-    #             if i != 0:
-    #                 input_cache_before = layer.input_cache[
-    #                     start_idx:end_idx].clone().numpy()
-    #                 grad_input_cache_before = layer.grad_output_cache[
-    #                     start_idx:end_idx].clone().numpy()
-    #             config["n_train_sample"] = end_idx - start_idx
-    #             input_fp, _ = self.get_input(**config)
+            # test fp mode
+            layer.set_mode(do_offset=True)
+            layer.cuda()
+            input_tensor_list = []
+            if (cast_func == single_to_half_det) or (
+                    cast_func == single_to_half_stoc):
+                self.check_layer_param_and_cache(layer)
+            for i in range(n_minibatch):
+                start_idx = i * minibatch_size
+                end_idx = min((i + 1) * minibatch_size, n_sample)
+                if i != 0:
+                    input_cache_before = layer.input_cache[
+                        start_idx:end_idx].clone().numpy()
+                    grad_input_cache_before = layer.grad_output_cache[
+                        start_idx:end_idx].clone().numpy()
+                config["n_train_sample"] = end_idx - start_idx
+                input_fp, _ = self.get_input(**config)
 
-    #             output = layer(*input_fp)
-    #             input_tensor_list.append(input_fp)
-    #             torch.sum(output).backward()
-    #             if i != 0:
-    #                 input_cache_after = layer.input_cache[start_idx:
-    #                                                       end_idx, :].numpy()
-    #                 grad_input_cache_after = layer.grad_output_cache[
-    #                     start_idx:end_idx, :].numpy()
-    #                 assert (input_cache_before == 0).all()
-    #                 assert (grad_input_cache_before == 0).all()
-    #                 assert (input_cache_before != input_cache_after).all()
-    #                 assert (grad_input_cache_before !=
-    #                         grad_input_cache_after).all()
-    #         # test lp mode
-    #         layer.set_mode(do_offset=False)
-    #         if (cast_func == single_to_half_det) or (
-    #                 cast_func == single_to_half_stoc):
-    #             self.check_layer_param_and_cache(layer)
-    #         for i in range(n_minibatch):
-    #             _, input_delta = self.get_input(**config)
-    #             output = layer(*input_delta)
-    #             torch.sum(output).backward()
-    #         if (cast_func == single_to_half_det) or (
-    #                 cast_func == single_to_half_stoc):
-    #             self.check_layer_param_and_cache(layer)
-    #     logger.info(self.__class__.__name__ + " layer test passed!")
+                output = layer(*input_fp)
+                input_tensor_list.append(input_fp)
+                torch.sum(output).backward()
+                if i != 0:
+                    input_cache_after = layer.input_cache[start_idx:
+                                                          end_idx, :].numpy()
+                    grad_input_cache_after = layer.grad_output_cache[
+                        start_idx:end_idx, :].numpy()
+                    assert (input_cache_before == 0).all()
+                    assert (grad_input_cache_before == 0).all()
+                    assert (input_cache_before != input_cache_after).all()
+                    assert (grad_input_cache_before !=
+                            grad_input_cache_after).all()
+            # test lp mode
+            layer.set_mode(do_offset=False)
+            if (cast_func == single_to_half_det) or (
+                    cast_func == single_to_half_stoc):
+                self.check_layer_param_and_cache(layer)
+            for i in range(n_minibatch):
+                _, input_delta = self.get_input(**config)
+                output = layer(*input_delta)
+                torch.sum(output).backward()
+            if (cast_func == single_to_half_det) or (
+                    cast_func == single_to_half_stoc):
+                self.check_layer_param_and_cache(layer)
+        logger.info(self.__class__.__name__ + " layer test passed!")

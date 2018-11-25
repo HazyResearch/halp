@@ -27,11 +27,8 @@ def get_bn_grads(grad_output, weight, input, sigma_sq, mu, eps, x_hat):
     d_x_hat = grad_output * expand_param_as_input(weight, input)
     inv_std = torch.tensor([1.0], device=sigma_sq.device, dtype=sigma_sq.dtype)\
         / torch.sqrt(sigma_sq + eps)
-
+    m = input.size(0) * input.size(2) * input.size(3)
     input_center = input - expand_param_as_input(mu, input)
-
-    # print("input center ", input, mu, input_center)
-    # print("inside input ", input)
 
     d_sigma_sq = -torch.tensor(
         [0.5], dtype=sigma_sq.dtype,
@@ -40,35 +37,18 @@ def get_bn_grads(grad_output, weight, input, sigma_sq, mu, eps, x_hat):
                 inv_std**3, input_center))
 
     d_mu = sum_tensor_as_param(
-        -d_x_hat * expand_param_as_input(inv_std, d_x_hat)
-    ) + torch.tensor(
-        [-2.0 / input.size(0)], dtype=sigma_sq.dtype, device=sigma_sq.
-        device) * d_sigma_sq * sum_tensor_as_param(input_center)
-
-    # print("inside int ", d_sigma_sq, d_mu)
-    # print("inside 1.5 ", sum_tensor_as_param(
-    #     -d_x_hat * expand_param_as_input(inv_std, d_x_hat)
-    # ), torch.tensor(
-    #     [-2.0 / input.size(0)], dtype=sigma_sq.dtype, device=sigma_sq.
-    #     device) * d_sigma_sq * sum_tensor_as_param(input_center))
-    # print("inside2 ", d_x_hat, input_center, inv_std, sigma_sq, mu)
-
-
+        -d_x_hat * expand_param_as_input(inv_std, d_x_hat)) + torch.tensor(
+            [-2.0 / m], dtype=sigma_sq.dtype, device=sigma_sq.
+            device) * d_sigma_sq * sum_tensor_as_param(input_center)
 
     d_x = d_x_hat * expand_param_as_input(inv_std, d_x_hat) \
-        + torch.tensor([2.0 / input.size(0)], dtype=d_x_hat.dtype, device=d_x_hat.device) \
+        + torch.tensor([2.0 / m], dtype=d_x_hat.dtype, device=d_x_hat.device) \
         * expand_param_as_input(d_sigma_sq, input_center) * input_center \
-        + torch.tensor([1.0 / input.size(0)], dtype=d_mu.dtype, device=d_mu.device) \
+        + torch.tensor([1.0 / m], dtype=d_mu.dtype, device=d_mu.device) \
         * expand_param_as_input(d_mu, input)
-
-    # print("inside 3.0", d_x)
-
 
     d_weight = sum_tensor_as_param(grad_output * x_hat)
     d_bias = sum_tensor_as_param(grad_output)
-
-    # print("inside 4.0", d_weight, d_bias)
-
 
     return d_x, d_weight, d_bias
 
@@ -89,15 +69,19 @@ class BitCenterBatchNormFunction(Function):
                            device=sigma_sq_delta.device,
                            requires_grad=False)
 
-        print("\ntest inside pre ", weight_delta + weight_lp, bias_lp + bias_delta, mu_lp + mu_delta, sigma_sq_delta + sigma_sq_lp)
-
-
-
         # we assume input is 4d tensor
-        batch_mean = input_full.mean(-1).mean(-1).mean(0).view(
+        C = input_full.size(1)
+        m = input_full.numel() / C
+
+        batch_mean_full = input_full.mean(-1).mean(-1).mean(0).view(
             1, input_full.size(1), 1, 1)
-        batch_var = (input_full**2).mean(-1).mean(-1).mean(0).view(1, input_full.size(1), 1, 1) \
-         - batch_mean * batch_mean
+        batch_var_full = (input_full**2).mean(-1).mean(-1).mean(0).view(1, input_full.size(1), 1, 1) \
+         - batch_mean_full * batch_mean_full
+        batch_mean_lp = input_lp.mean(-1).mean(-1).mean(0).view(
+            1, input_lp.size(1), 1, 1)
+        batch_var_lp = (input_lp**2).mean(-1).mean(-1).mean(0).view(1, input_lp.size(1), 1, 1) \
+         - batch_mean_lp * batch_mean_lp
+
         # Given O + d <--(O + d) (1 - rho) + rho * V where V is the new observed value.
         # the update rule to delta running statistics d is
         # d <-- d (1 - rho) + rho (V - O)
@@ -109,23 +93,25 @@ class BitCenterBatchNormFunction(Function):
             torch.Tensor([
                 momentum,
             ]).type(mu_delta.dtype).item(),
-            batch_mean.squeeze() - mu_lp)
+            batch_mean_full.squeeze() - mu_lp)
         sigma_sq_delta.mul_(
             torch.Tensor([
                 1.0 - momentum,
             ]).type(sigma_sq_delta.dtype).item())
+        # note the running stat uses unbias estimate
+        # while the batch stat does not for variance
         sigma_sq_delta.add_(
             torch.Tensor([
                 momentum,
             ]).type(sigma_sq_delta.dtype).item(),
-            batch_var.squeeze() - sigma_sq_lp)
+            batch_var_full.squeeze() * m / float(m - 1.0) - sigma_sq_lp)
 
         x_hat_lp = \
-         (input_lp - expand_param_as_input(mu_lp, input_lp)) \
-         / expand_param_as_input(torch.sqrt(sigma_sq_lp + eps), input_lp)
+         (input_lp - expand_param_as_input(batch_mean_lp, input_lp)) \
+         / expand_param_as_input(torch.sqrt(batch_var_lp + eps), input_lp)
         x_hat_full = \
-         (input_full - expand_param_as_input(mu_lp + mu_delta, input_full)) \
-         / expand_param_as_input(torch.sqrt(sigma_sq_lp + sigma_sq_delta + eps), input_full)
+         (input_full - expand_param_as_input(batch_mean_full, input_full)) \
+         / expand_param_as_input(torch.sqrt(batch_var_full + eps), input_full)
 
         y_lp = expand_param_as_input(weight_lp, input_lp) * x_hat_lp \
             + expand_param_as_input(bias_lp, input_lp)
@@ -133,48 +119,36 @@ class BitCenterBatchNormFunction(Function):
             + expand_param_as_input(bias_lp + bias_delta, input_full)
         ctx.save_for_backward(input_delta, input_lp, x_hat_lp, x_hat_full,
                               mu_delta, mu_lp, sigma_sq_delta, sigma_sq_lp,
-                              output_grad_lp, weight_lp, weight_delta, eps)
-        
-        print("\ndouble inside check out ", bias_lp + bias_delta, y_full)
-
-
+                              output_grad_lp, weight_lp, weight_delta, eps,
+                              batch_mean_full, batch_mean_lp, batch_var_full,
+                              batch_var_lp)
         return y_full - y_lp
 
     def backward(ctx, grad_output):
+        # TODO: clean unused tensors
         input_delta, input_lp, x_hat_lp, x_hat_full, \
         mu_delta, mu_lp, sigma_sq_delta, sigma_sq_lp, \
-        output_grad_lp, weight_lp, weight_delta, eps = ctx.saved_tensors
-
-        # print("inside 0 ", grad_output, output_grad_lp, mu_lp, sigma_sq_lp)
-
+        output_grad_lp, weight_lp, weight_delta, eps, \
+        batch_mean_full, batch_mean_lp, \
+        batch_var_full, batch_var_lp = ctx.saved_tensors
 
         d_x_full, d_weight_full, d_bias_full = \
          get_bn_grads(grad_output + output_grad_lp,
            weight_delta + weight_lp,
            input_delta + input_lp,
-           sigma_sq_delta + sigma_sq_lp,
-           mu_delta + mu_lp,
+           batch_var_full,
+           batch_mean_full,
            eps,
            x_hat_full)
-
-        # print("inside 0.5 ", grad_output, output_grad_lp, mu_lp, sigma_sq_lp, input_lp)
-
 
         d_x_lp, d_weight_lp, d_bias_lp = \
          get_bn_grads(output_grad_lp,
            weight_lp,
            input_lp,
-           sigma_sq_lp,
-           mu_lp,
+           batch_var_lp,
+           batch_mean_lp,
            eps,
            x_hat_lp)
-
-        print()
-        # print("inside 0.6 ", d_x_full - d_x_lp, d_x_full, d_x_lp)
-        print("\ntest inside ", weight_delta + weight_lp, mu_lp + mu_delta, sigma_sq_delta + sigma_sq_lp)
-        # print("inside grad ", d_x_full, d_weight_full, d_bias_full)
-        print("\ninside grad ", d_x_full)
-
 
         return d_x_full - d_x_lp, None, None, None, None, None, None, \
             d_weight_full - d_weight_lp, None, d_bias_full - d_bias_lp, None, None, None
@@ -191,7 +165,7 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
 
     def __init__(self,
                  num_features,
-                 cast_func,
+                 cast_func=void_cast_func,
                  eps=1e-05,
                  momentum=0.1,
                  n_train_sample=1):
@@ -263,40 +237,39 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
             self.grad_cache_iter + input.size(0)) % self.n_train_sample
 
     def forward_fp(self, input):
-
-        # print("fp input", input)
-        # print("fp weight ", self.weight)
-        # print("fp bias ", self.bias)
-        # print("fp running mean ", self.running_mean)
-        # print("fp running var ", self.running_var)
-
         self.check_or_setup_input_cache(input)
         # as foward fp is used for test or fp steps
         # it should not update the running statistics
-        output = self.fp_func(
-            input,
-            self.running_mean,
-            self.running_var,
-            self.weight,
-            self.bias,
-            training=False,
-            momentum=self.momentum,
-            eps=self.eps)
+        # however, it needs to use batch stat for training
+        # and running stat for evaluation
+        if self.training:
+            # we use a dummy running stat to make sure
+            # the true running stat is not updated during
+            # fp steps.
+            output = self.fp_func(
+                input,
+                torch.zeros_like(self.running_mean),
+                torch.zeros_like(self.running_var),
+                self.weight,
+                self.bias,
+                training=True,
+                momentum=self.momentum,
+                eps=self.eps)
+        else:
+            output = self.fp_func(
+                input,
+                self.running_mean,
+                self.running_var,
+                self.weight,
+                self.bias,
+                training=False,
+                momentum=self.momentum,
+                eps=self.eps)
         self.check_or_setup_grad_cache(output)
         self.update_input_cache(input)
-
-        # print("fp output ", torch.sum(output))
-
         return output
 
     def forward_lp(self, input):
-
-        # print("lp input", input)
-        # print("lp weight ", self.weight_delta)
-        # print("lp bias ", self.bias_delta)
-        # print("lp running mean ", self.running_mean_delta)
-        # print("lp running var ", self.running_var_delta)
-
         input_lp, grad_output_lp = self.get_input_cache_grad_cache(input)
         # note fp func only has training mode
         output = self.lp_func(
@@ -305,7 +278,4 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
             self.weight_delta, self.weight_lp, self.bias_delta, self.bias_lp,
             self.momentum, self.eps)
         self.increment_cache_iter(input)
-
-        # print("lp output ", torch.sum(output))
-
         return output
