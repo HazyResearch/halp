@@ -213,29 +213,6 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
         init.zeros_(self.running_var_delta)
         init.zeros_(self.running_var_lp)
 
-    # def check_or_setup_input_cache(self, input):
-    #     if self.input_cache is None:
-    #         self.input_cache = self.setup_cache(input)
-    #         self.cache_iter = 0
-
-    # def check_or_setup_grad_cache(self, output):
-    #     if self.grad_output_cache is None:
-    #         self.grad_output_cache = self.setup_cache(output)
-    #         self.grad_cache_iter = 0
-
-    # def get_input_cache_grad_cache(self, input):
-    #     input_lp = self.input_cache[self.cache_iter:(
-    #         self.cache_iter + input.size(0))].cuda()
-    #     grad_output_lp = \
-    #         self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
-    #     return input_lp, grad_output_lp
-
-    # def increment_cache_iter(self, input):
-    #     self.cache_iter = (
-    #         self.cache_iter + input.size(0)) % self.n_train_sample
-    #     self.grad_cache_iter = (
-    #         self.grad_cache_iter + input.size(0)) % self.n_train_sample
-
     def forward_fp(self, input):
         self.check_or_setup_input_cache(input)
         # as foward fp is used for test or fp steps

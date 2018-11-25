@@ -11,6 +11,7 @@ from halp.utils.test_utils import HalpTest
 from torch.autograd.gradcheck import get_numerical_jacobian, iter_tensors, make_jacobian
 import logging
 import sys
+import copy
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
@@ -48,10 +49,15 @@ class TestBitCenterLayer(HalpTest):
             grad_list.append(bias_grad)
         return grad_list
 
-    def get_analytical_grad(self, layer, input_fp, input_delta, target=None):
+    def get_analytical_grad(self, layer1, input_fp, input_delta, target=None):
         # this function get the analytical grad with respect to parameters and input
         # it calls get_analytical_param_grad to get grad wrt to paramters.
         # the framework in the function is generic to all layers
+        # note we copy the layer in order to make numerical grad func
+        # to properly got the state of the layer, e.g. for batch norm
+        # we need to get num grad func a set of running statistics before
+        # the stat update resulting from the current lp step.
+        layer = copy.deepcopy(layer1)
         layer.set_mode(do_offset=True)
         grad_list = []
         output_fp = layer(*input_fp)

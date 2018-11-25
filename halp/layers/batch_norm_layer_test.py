@@ -19,6 +19,7 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
     '''
     Test the functionality of bit centering conv2d layers
     '''
+
     def get_config(self, type="grad_check"):
         config = {}
         # this config can test for padding != 0 and stride > 1 cases
@@ -32,7 +33,7 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
             # config["n_train_sample"] = 1
             config["n_train_sample"] = 6
             config["num_features"] = 3
-            config["bias"] = True   # this is dummy
+            config["bias"] = True  # this is dummy
             config["cast_func"] = void_cast_func
             config["do_double"] = True
             config["seed"] = 0
@@ -40,7 +41,7 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         elif type == "fw_bw_proc":
             config["n_train_sample"] = 98
             config["num_features"] = 13
-            config["bias"] = True # dummy
+            config["bias"] = True  # dummy
             config["cast_func"] = single_to_half_det
             config["do_double"] = False
             config["seed"] = 0
@@ -49,17 +50,8 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
             raise Exception("Config type not supported!")
         return config
 
-    def prepare_layer(self,
-                      input_w,
-                      input_h,
-                      n_train_sample,
-                      num_features,
-                      bias,
-                      cast_func,
-                      eps,
-                      momentum,
-                      do_double,
-                      seed,
+    def prepare_layer(self, input_w, input_h, n_train_sample, num_features,
+                      bias, cast_func, eps, momentum, do_double, seed,
                       batch_size):
         layer = BitCenterBatchNorm2D(
             num_features=num_features,
@@ -75,25 +67,21 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
             # properly setup value for weights
             layer.weight.data.copy_(
                 torch.randn(
-                    layer.num_features,
-                    dtype=torch.double,
+                    layer.num_features, dtype=torch.double,
                     requires_grad=True).cuda())
             layer.weight_lp.data.copy_(layer.weight.data)
             layer.weight_delta.data.copy_(
                 torch.randn(
-                    layer.num_features,
-                    dtype=torch.double,
+                    layer.num_features, dtype=torch.double,
                     requires_grad=True).cuda())
             layer.bias.data.copy_(
                 torch.randn(
-                    layer.num_features, 
-                    dtype=torch.double,
+                    layer.num_features, dtype=torch.double,
                     requires_grad=True).cuda())
             layer.bias_lp.data.copy_(layer.bias.data)
             layer.bias_delta.data.copy_(
                 torch.randn(
-                    layer.num_features,
-                    dtype=torch.double,
+                    layer.num_features, dtype=torch.double,
                     requires_grad=True).cuda())
             # properly setup running statistics
             layer.running_mean.data.copy_(
@@ -122,18 +110,8 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         layer.cuda()
         return layer
 
-    def get_input(self,
-                  input_w,
-                  input_h,
-                  n_train_sample,
-                  num_features,
-                  bias,
-                  cast_func,
-                  eps,
-                  momentum,
-                  do_double,
-                  seed,
-                  batch_size):
+    def get_input(self, input_w, input_h, n_train_sample, num_features, bias,
+                  cast_func, eps, momentum, do_double, seed, batch_size):
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
@@ -189,13 +167,15 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         # as the running stats change in every forward call,
         # the finite difference approach in bit_center_layer_test.py
         # would not work properly. Instead, we use the original batchnorm2d
-        # layer, generate grad and compare to the one we got using 
+        # layer, generate grad and compare to the one we got using
         # bit center layer.
         grad_list = []
         layer.set_mode(do_offset=True)
         param_dict = layer.state_dict()
-        init_running_mean = layer.running_mean.clone() + layer.running_mean_delta.clone()
-        init_running_var = layer.running_var.clone() + layer.running_var_delta.clone()
+        init_running_mean = layer.running_mean.clone(
+        ) + layer.running_mean_delta.clone()
+        init_running_var = layer.running_var.clone(
+        ) + layer.running_var_delta.clone()
 
         # update the offset variable
         for name, param in layer.named_parameters():
@@ -205,13 +185,15 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
                 p_offset.data.add_(param)
 
         param_dict = layer.state_dict()
-        layer_orig = torch.nn.BatchNorm2d(num_features=layer.num_features, track_running_stats=True).cuda().double()
+        layer_orig = torch.nn.BatchNorm2d(
+            num_features=layer.num_features,
+            track_running_stats=True).cuda().double()
         for name, param in layer_orig.named_parameters():
             param.data.copy_(param_dict[name])
         layer_orig.running_mean.data.copy_(init_running_mean.data)
         layer_orig.running_var.data.copy_(init_running_var.data)
         # turn off running stat update for this batch to sync with the bc layer
-        layer_orig.train() 
+        layer_orig.train()
         input = []
         for i, (x, y) in enumerate(zip(input_fp, input_delta)):
             input.append(Parameter(x + y, requires_grad=True))
@@ -232,37 +214,52 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         grad_list.append(layer_orig.running_var.clone())
         return output_final, grad_list
 
-
-    def get_analytical_grad(self, layer1, input_fp, input_delta, target=None):
-        # this function get the analytical grad with respect to parameters and input
-        # it calls get_analytical_param_grad to get grad wrt to paramters.
-        # the framework in the function is generic to all layers
-        layer = copy.deepcopy(layer1)
-        layer.set_mode(do_offset=True)
+    def get_analytical_param_grad(self, layer):
+        # this function get the analytical grad with respect to parameters
+        # This function can be very layer specfic.
         grad_list = []
-        output_fp = layer(*input_fp)
-        output_fp_copy = output_fp.data.clone()
-        loss_fp = torch.sum(0.5 * output_fp * output_fp)
-        loss_fp.backward()
-        grad_input_fp = layer.input_grad_for_test.clone()
+        weight_grad = layer.weight.grad + layer.weight_delta.grad
+        grad_list.append(weight_grad)
+        bias_grad = layer.bias.grad + layer.bias_delta.grad
+        grad_list.append(bias_grad)
+        grad_list += [
+            layer.running_mean.clone() + layer.running_mean_delta.clone()
+        ]
+        grad_list += [
+            layer.running_var.clone() + layer.running_var_delta.clone()
+        ]
+        return grad_list
 
-        layer.set_mode(do_offset=False)
-        output_lp = layer(*input_delta)
-        loss_lp = torch.sum(0.5 * output_lp * output_lp)
-        loss_lp.backward()
-        grad_input_delta = layer.input_grad_for_test.clone()
-        # as we only have 1 minibatch, we can directly use layer.grad_output_cache
-        input_grad = grad_input_fp + grad_input_delta
-        grad_list.append(input_grad)
+    # def get_analytical_grad(self, layer1, input_fp, input_delta, target=None):
+    #     # this function get the analytical grad with respect to parameters and input
+    #     # it calls get_analytical_param_grad to get grad wrt to paramters.
+    #     # the framework in the function is generic to all layers
+    #     layer = copy.deepcopy(layer1)
+    #     layer.set_mode(do_offset=True)
+    #     grad_list = []
+    #     output_fp = layer(*input_fp)
+    #     output_fp_copy = output_fp.data.clone()
+    #     loss_fp = torch.sum(0.5 * output_fp * output_fp)
+    #     loss_fp.backward()
+    #     grad_input_fp = layer.input_grad_for_test.clone()
 
-        grad_list += self.get_analytical_param_grad(layer)
-        grad_list += [layer.running_mean.clone() + layer.running_mean_delta.clone()]
-        grad_list += [layer.running_var.clone() + layer.running_var_delta.clone()]
-        
-        # print("triple check 2", torch.sum((output_lp + output_fp)**2))
-        # print("double check 3 ", len(grad_list), torch.sum(grad_list[-2]**2), torch.sum(grad_list[-1]**2), torch.sum(grad_list[0]**2), torch.sum(grad_list[1]**2), torch.sum(grad_list[2]**2))
+    #     layer.set_mode(do_offset=False)
+    #     output_lp = layer(*input_delta)
+    #     loss_lp = torch.sum(0.5 * output_lp * output_lp)
+    #     loss_lp.backward()
+    #     grad_input_delta = layer.input_grad_for_test.clone()
+    #     # as we only have 1 minibatch, we can directly use layer.grad_output_cache
+    #     input_grad = grad_input_fp + grad_input_delta
+    #     grad_list.append(input_grad)
 
-        return output_lp + output_fp, grad_list
+    #     grad_list += self.get_analytical_param_grad(layer)
+    #     # grad_list += [layer.running_mean.clone() + layer.running_mean_delta.clone()]
+    #     # grad_list += [layer.running_var.clone() + layer.running_var_delta.clone()]
+
+    #     # print("triple check 2", torch.sum((output_lp + output_fp)**2))
+    #     # print("double check 3 ", len(grad_list), torch.sum(grad_list[-2]**2), torch.sum(grad_list[-1]**2), torch.sum(grad_list[0]**2), torch.sum(grad_list[1]**2), torch.sum(grad_list[2]**2))
+
+    #     return output_lp + output_fp, grad_list
 
 
 if __name__ == "__main__":
@@ -312,7 +309,6 @@ if __name__ == "__main__":
     # y_hat_full = x_hat_full * weight_full + bias_full
     # y_hat_lp = x_hat_lp * weight_lp + bias_lp
 
-
     # m = 2
     # d_y_full = y_hat_full
     # d_y_lp = y_hat_lp
@@ -325,20 +321,17 @@ if __name__ == "__main__":
 
     # # print("outside pre ", d_x_hat_lp, inv_sigma_lp, batch_var_lp + eps, np.sqrt(batch_var_lp + eps), batch_var_lp, batch_mean_lp)
 
-
     # d_sigma_sq_full = -np.sum(d_x_hat_full * (input_full - batch_mean) * 0.5 * inv_sigma_full**3)
     # d_sigma_sq_lp = -np.sum(d_x_hat_lp * (input_lp - batch_mean_lp) * 0.5 * inv_sigma_lp**3)
 
     # d_mu_full = -np.sum(d_x_hat_full * inv_sigma_full) + np.sum(d_sigma_sq_full * -2.0 * (input_full - batch_mean)) / m
     # d_mu_lp = -np.sum(d_x_hat_lp * inv_sigma_lp) + np.sum(d_sigma_sq_lp * -2.0 * (input_lp - batch_mean_lp)) / m
 
-
     # # print("outside int ", d_sigma_sq_lp, d_mu_lp)
-
 
     # dx_full = d_x_hat_full * inv_sigma_full + d_sigma_sq_full * 2 * (input_full - batch_mean) / m + d_mu_full / m
     # dx_lp =  d_x_hat_lp * inv_sigma_lp + d_sigma_sq_lp * 2 * (input_lp - batch_mean_lp) / m + d_mu_lp / m
-    
+
     # d_weight_full = np.sum(d_y_full * x_hat_full)
     # d_weight_lp = np.sum(d_y_lp * x_hat_lp)
 
@@ -347,19 +340,16 @@ if __name__ == "__main__":
 
     # print("test ", y_hat_full, y_hat_lp, dx_full, dx_lp, running_mean_full, running_var_full, running_mean_new, running_var_new)
 
-
     # input_full_t = torch.nn.Parameter(torch.Tensor(input_full).view(1, 1, 2, 1).cuda().cpu(), requires_grad=True)
     # layer_orig = torch.nn.BatchNorm2d(1, momentum=0.1).cuda().cpu()
     # layer_orig.weight.data.copy_(torch.tensor(weight_full, dtype=layer_orig.weight.dtype))
     # layer_orig.bias.data.copy_(torch.tensor(bias_full, dtype=layer_orig.bias.dtype))
     # layer_orig.running_mean.data.copy_(torch.tensor(running_mean_full, dtype=layer_orig.bias.dtype))
     # layer_orig.running_var.data.copy_(torch.tensor(running_var_full, dtype=layer_orig.bias.dtype))
-        
+
     # print("pre test stat ", layer_orig.running_mean.item(), layer_orig.running_var.item())
 
     # output = layer_orig(input_full_t)
     # loss = torch.sum(0.5 * output * output)
     # loss.backward()
     # print("test layer grad ", output.cpu().detach().numpy(), input_full_t.grad.data.cpu().detach().numpy(), layer_orig.running_mean.item(), layer_orig.running_var.item())
-
-
