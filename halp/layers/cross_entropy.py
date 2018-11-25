@@ -112,9 +112,10 @@ class BitCenterCrossEntropy(BitCenterLayer):
         self.input_grad_for_test = input[0].clone()
 
     def forward_fp(self, input, target):
-        if self.input_cache is None:
-            self.input_cache = self.setup_cache(input)
-            self.cache_iter = 0
+        self.check_or_setup_input_cache(input)
+        # if self.input_cache is None:
+        #     self.input_cache = self.setup_cache(input)
+        #     self.cache_iter = 0
         output = self.fp_func(input, target)
         if self.grad_output_cache is None:
             # in the cross entropy layer we need to cache the input gradient
@@ -135,10 +136,11 @@ class BitCenterCrossEntropy(BitCenterLayer):
             self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         output = self.lp_func(input_delta, input_lp, target, grad_output_lp)
-        self.cache_iter = (
-            self.cache_iter + input.size(0)) % self.n_train_sample
-        self.grad_cache_iter = (
-            self.grad_cache_iter + input.size(0)) % self.n_train_sample
+        self.increment_cache_iter(input)
+        # self.cache_iter = (
+        #     self.cache_iter + input.size(0)) % self.n_train_sample
+        # self.grad_cache_iter = (
+        #     self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output
 
     def forward(self, input, target):

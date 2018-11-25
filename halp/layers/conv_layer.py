@@ -198,23 +198,26 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
         self.register_backward_hook(self.update_grad_output_cache)
 
     def forward_fp(self, input):
-        if self.input_cache is None:
-            self.input_cache = self.setup_cache(input)
-            self.cache_iter = 0
+        self.check_or_setup_input_cache(input)
+        # if self.input_cache is None:
+        #     self.input_cache = self.setup_cache(input)
+        #     self.cache_iter = 0
         output = self.fp_func(input, self.weight, self.bias, self.stride,
                               self.padding, self.dilation, self.groups)
-        if self.grad_output_cache is None:
-            self.grad_output_cache = self.setup_cache(output)
-            self.grad_cache_iter = 0
+        # if self.grad_output_cache is None:
+        #     self.grad_output_cache = self.setup_cache(output)
+        #     self.grad_cache_iter = 0
+        self.check_or_setup_grad_cache(output)
         self.update_input_cache(input)
         return output
 
     def forward_lp(self, input):
         # Need to test do_offset mode whether gradient is updated properly
-        input_lp = self.input_cache[self.cache_iter:(
-            self.cache_iter + input.size(0))].cuda()
-        grad_output_lp = \
-            self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
+        input_lp, grad_output_lp = self.get_input_cache_grad_cache(input)
+        # input_lp = self.input_cache[self.cache_iter:(
+        #     self.cache_iter + input.size(0))].cuda()
+        # grad_output_lp = \
+        #     self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         weight_lp = self.weight_lp
         weight_delta = self.weight_delta
@@ -224,8 +227,9 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
                               weight_delta, weight_lp, bias_delta, bias_lp,
                               self.stride, self.padding, self.dilation,
                               self.groups)
-        self.cache_iter = (
-            self.cache_iter + input.size(0)) % self.n_train_sample
-        self.grad_cache_iter = (
-            self.grad_cache_iter + input.size(0)) % self.n_train_sample
+        self.increment_cache_iter(input)
+        # self.cache_iter = (
+        #     self.cache_iter + input.size(0)) % self.n_train_sample
+        # self.grad_cache_iter = (
+        #     self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output
