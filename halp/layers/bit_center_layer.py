@@ -64,6 +64,12 @@ class BitCenterModuleList(BitCenterModule, nn.ModuleList):
         nn.ModuleList.__init__(self, modules)
 
 
+class BitCenterSequantial(BitCenterModule, nn.Sequential):
+    def __init__(self, modules=None):
+        BitCenterModule.__init__(self)
+        nn.Sequential.__init__(self, modules)
+
+
 class BitCenterLayer(BitCenterModule):
     '''
     Every bit center style layer should inheritate this base
