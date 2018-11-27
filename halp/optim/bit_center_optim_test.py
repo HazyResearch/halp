@@ -81,7 +81,7 @@ class TestBitCenterOptim(HalpTest):
                     # atol is selected to not asserting on denormal values for half precision
                     # rtol test at least if the values are in neighbor positions
                     # in the of the float point grid, we require a bit stricter with
-                    # a factor of 4.0
+                    # a factor of 2.0
                     if not is_last_update:
                         # Note here we are asserting on the delta variables.
                         # As the delta variables are cleared before this test, 
@@ -90,7 +90,7 @@ class TestBitCenterOptim(HalpTest):
                             new_p.cpu().detach().numpy(),
                             p.cpu().detach().numpy(),
                             atol=6.2e-5,
-                            rtol=1.0 / 1024.0 / 4.0)
+                            rtol=1.0 / 1024.0 / 2.0)
                 elif p_name.endswith("_lp"):
                     if is_last_update:
                         assert not (p_prev.cpu().detach().numpy() == p.cpu().detach().

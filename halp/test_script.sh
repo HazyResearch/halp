@@ -3,7 +3,7 @@ python -m unittest layers/linear_layer_test.py
 python -m unittest layers/cross_entropy_test.py
 python -m unittest layers/conv_layer_test.py
 python -m unittest layers/relu_layer_test.py
-python -m unittest layers/max_pool_layer_test.py
+python -m unittest layers/pool_layer_test.py
 python -m unittest layers/batch_norm_layer_test.py
 python -m unittest models/logistic_regression_test.py
 python -m unittest models/lenet_test.py

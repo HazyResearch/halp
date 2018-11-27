@@ -11,7 +11,7 @@ from halp.layers.linear_layer import BitCenterLinear
 from halp.layers.cross_entropy import BitCenterCrossEntropy
 from halp.layers.conv_layer import BitCenterConv2D
 from halp.layers.relu_layer import BitCenterReLU
-from halp.layers.max_pool_layer import BitCenterMaxPool2D
+from halp.layers.pool_layer import BitCenterMaxPool2D
 
 
 class LeNet_PyTorch(nn.Module):

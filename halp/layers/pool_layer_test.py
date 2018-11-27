@@ -1,8 +1,7 @@
 import torch
 import numpy as np
 from torch.nn import Parameter
-from halp.layers.max_pool_layer import BitCenterMaxPool2D
-from halp.layers.max_pool_layer import bit_center_max_pool2d
+from halp.layers.pool_layer import BitCenterMaxPool2D, BitCenterAvgPool2D
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 from unittest import TestCase
 from halp.utils.utils import set_seed
@@ -15,7 +14,8 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-class TestBitCenterMaxPool2DLayer(TestBitCenterLayer, TestCase):
+class TestBitCenterPool2DLayer(TestBitCenterLayer):
+# class TestBitCenterMaxPool2DLayer(TestBitCenterLayer, TestCase):
     '''
     Test the functionality of bit centering conv2d layers
     '''
@@ -49,33 +49,6 @@ class TestBitCenterMaxPool2DLayer(TestBitCenterLayer, TestCase):
         else:
             raise Exception("Config type not supported!")
         return config
-
-    def prepare_layer(self,
-                      channel_in,
-                      w_in,
-                      h_in,
-                      kernel_size,
-                      stride=None,
-                      padding=0,
-                      cast_func=void_cast_func,
-                      bias=False,
-                      do_double=True,
-                      seed=0,
-                      batch_size=1,
-                      n_train_sample=1):
-        layer = BitCenterMaxPool2D(
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
-
-        # Note do_double = setup layer for gradient check, otherwise, it is for checking
-        # the tensor properties, and layer behaviors
-        if do_double:
-            layer.double()
-        layer.cuda()
-        return layer
 
     def check_layer_param_and_cache(self, layer):
         t_list = [(layer.input_cache, torch.half, False, False),
@@ -155,6 +128,95 @@ class TestBitCenterMaxPool2DLayer(TestBitCenterLayer, TestCase):
         num_input_grad = input_final[0].grad
         grad_list.append(num_input_grad)
         return output_final, grad_list
+
+
+class TestBitCenterMaxPool2DLayer(TestBitCenterPool2DLayer, TestCase):
+    def prepare_layer(self,
+                      channel_in,
+                      w_in,
+                      h_in,
+                      kernel_size,
+                      stride=None,
+                      padding=0,
+                      cast_func=void_cast_func,
+                      bias=False,
+                      do_double=True,
+                      seed=0,
+                      batch_size=1,
+                      n_train_sample=1):
+        layer = BitCenterMaxPool2D(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            cast_func=cast_func,
+            n_train_sample=n_train_sample)
+
+        # Note do_double = setup layer for gradient check, otherwise, it is for checking
+        # the tensor properties, and layer behaviors
+        if do_double:
+            layer.double()
+        layer.cuda()
+        return layer
+
+
+class TestBitCenterAvgPool2DLayer(TestBitCenterPool2DLayer, TestCase):
+    def get_config(self, type="grad_check"):
+        config = {}
+        if type == "grad_check":
+            config["n_train_sample"] = 35
+            config["channel_in"] = 17
+            config["w_in"] = 25
+            config["h_in"] = 14
+            config["kernel_size"] = (4, 4)
+            config["stride"] = None
+            config["padding"] = 1
+            config["cast_func"] = void_cast_func
+            config["do_double"] = True
+            config["seed"] = 0
+            config["batch_size"] = 35
+        elif type == "fw_bw_proc":
+            config["n_train_sample"] = 98
+            config["channel_in"] = 13
+            config["w_in"] = 31
+            config["h_in"] = 17
+            config["kernel_size"] = (4, 4)
+            config["stride"] = None
+            config["padding"] = 0
+            config["cast_func"] = single_to_half_det
+            config["do_double"] = False
+            config["seed"] = 0
+            config["batch_size"] = 33
+        else:
+            raise Exception("Config type not supported!")
+        return config
+
+
+    def prepare_layer(self,
+                      channel_in,
+                      w_in,
+                      h_in,
+                      kernel_size,
+                      stride=None,
+                      padding=0,
+                      cast_func=void_cast_func,
+                      bias=False,
+                      do_double=True,
+                      seed=0,
+                      batch_size=1,
+                      n_train_sample=1):
+        layer = BitCenterAvgPool2D(
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            cast_func=cast_func,
+            n_train_sample=n_train_sample)
+
+        # Note do_double = setup layer for gradient check, otherwise, it is for checking
+        # the tensor properties, and layer behaviors
+        if do_double:
+            layer.double()
+        layer.cuda()
+        return layer
 
 
 if __name__ == "__main__":
