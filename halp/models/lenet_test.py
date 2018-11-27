@@ -51,6 +51,20 @@ class LeNetTest(BitCenterModelTest, TestCase):
             y_list.append(torch.LongTensor(batch_size).random_(n_class).cuda())
         return x_list, y_list
 
+    def check_layer_status(self, bc_model, do_offset=True):
+        assert bc_model.conv1.do_offset == do_offset
+        assert bc_model.relu1.do_offset == do_offset
+        assert bc_model.max_pool1.do_offset == do_offset
+        assert bc_model.conv2.do_offset == do_offset
+        assert bc_model.relu2.do_offset == do_offset
+        assert bc_model.max_pool2.do_offset == do_offset
+        assert bc_model.fc1.do_offset == do_offset
+        assert bc_model.relu3.do_offset == do_offset
+        assert bc_model.fc2.do_offset == do_offset
+        assert bc_model.relu4.do_offset == do_offset
+        assert bc_model.fc3.do_offset == do_offset
+        assert bc_model.criterion.do_offset == do_offset
+
 
 if __name__ == "__main__":
     print(torch.__version__)

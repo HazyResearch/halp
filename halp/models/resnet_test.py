@@ -3,7 +3,7 @@ import numpy as np
 from torch.autograd import Variable
 from halp.utils.test_utils import assert_model_grad_equal
 from halp.utils.utils import single_to_half_det, single_to_half_stoc, void_cast_func
-from halp.utils.utils import copy_model_weights, set_seed
+from halp.utils.utils import copy_model_weights, set_seed, get_recur_attr
 from unittest import TestCase
 from halp.utils.test_utils import HalpTest
 from halp.models.resnet import ResNet, ResNet_PyTorch
@@ -57,6 +57,36 @@ class LeNetTest(BitCenterModelTest, TestCase):
                     requires_grad=True).cuda().double())
             y_list.append(torch.LongTensor(batch_size).random_(n_class).cuda())
         return x_list, y_list
+
+    def check_layer_status(self, bc_model, do_offset=True):
+        assert bc_model.conv1.do_offset == do_offset
+        assert bc_model.bn1.do_offset == do_offset
+        assert bc_model.relu1.do_offset == do_offset
+        for layer_idx in range(4):
+            for block_idx in range(2):
+                layer_name = "layer"+str(layer_idx + 1)+"."+str(block_idx)
+                layer = get_recur_attr(bc_model, (layer_name + ".conv1").split("."))
+                assert layer.do_offset == do_offset
+                layer = get_recur_attr(bc_model, (layer_name + ".bn1").split("."))
+                assert layer.do_offset == do_offset
+                layer = get_recur_attr(bc_model, (layer_name + ".relu1").split("."))
+                assert layer.do_offset == do_offset
+                layer = get_recur_attr(bc_model, (layer_name + ".conv2").split("."))
+                assert layer.do_offset == do_offset
+                layer = get_recur_attr(bc_model, (layer_name + ".bn2").split("."))
+                assert layer.do_offset == do_offset
+                layer = get_recur_attr(bc_model, (layer_name + ".relu2").split("."))
+                assert layer.do_offset == do_offset
+
+                if layer_idx != 0 and block_idx == 0:
+                    layer = get_recur_attr(bc_model, (layer_name + ".shortcut.0").split("."))
+                    assert layer.do_offset == do_offset
+                    layer = get_recur_attr(bc_model, (layer_name + ".shortcut.1").split("."))
+                    assert layer.do_offset == do_offset
+
+        assert bc_model.avg_pool.do_offset == do_offset
+        assert bc_model.linear.do_offset == do_offset
+        assert bc_model.criterion.do_offset == do_offset
 
 
 if __name__ == "__main__":

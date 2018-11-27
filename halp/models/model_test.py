@@ -45,7 +45,7 @@ class BitCenterModelTest(HalpTest):
             loss_lp = lp_model(x_list[i], y_list[i]).detach()
             loss_bc = bc_model(x_list[i], y_list[i])
             loss_bc.backward()
-            bc_model.check_layer_status(do_offset=True)
+            self.check_layer_status(bc_model, do_offset=True)
             # print("fp loss ", loss_native.item(), loss_fp.item(), loss_lp.item(), loss_bc.item())
             np.testing.assert_allclose(
                 np.array(loss_native.item()), np.array(loss_fp.item()))
@@ -63,9 +63,9 @@ class BitCenterModelTest(HalpTest):
             loss_fp.backward()
             loss_lp = lp_model(x_list[i], y_list[i])
             loss_lp.backward()
-            bc_model.check_layer_status(do_offset=False)
+            self.check_layer_status(bc_model, do_offset=False)
             loss_bc = bc_model(torch.zeros_like(x_list[i]), y_list[i])
-            bc_model.check_layer_status(do_offset=False)
+            self.check_layer_status(bc_model, do_offset=False)
             loss_bc.backward()
             np.testing.assert_allclose(
                 np.array(loss_native.item()), np.array(loss_fp.item()))
