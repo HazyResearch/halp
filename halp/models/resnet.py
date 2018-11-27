@@ -4,14 +4,16 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from halp.utils.utils import single_to_half_det, single_to_half_stoc, copy_layer_weights
+from halp.utils.utils import single_to_half_det, single_to_half_stoc
+from halp.utils.utils import copy_layer_weights, copy_module_weights
 from halp.utils.utils import void_cast_func, get_recur_attr
 from halp.layers.bit_center_layer import BitCenterModule
+from halp.layers.bit_center_layer import BitCenterSequential
 from halp.layers.linear_layer import BitCenterLinear
 from halp.layers.cross_entropy import BitCenterCrossEntropy
 from halp.layers.conv_layer import BitCenterConv2D
 from halp.layers.relu_layer import BitCenterReLU
-from halp.layers.pool_layer import BitCenterMaxPool2D
+from halp.layers.pool_layer import BitCenterAvgPool2D
 from halp.layers.batch_norm_layer import BitCenterBatchNorm2D
 
 
@@ -52,7 +54,7 @@ class BasicBlock(nn.Module):
 
 class ResNet_PyTorch(nn.Module):
     def __init__(self, block, num_blocks, num_classes=10):
-        super(ResNet, self).__init__()
+        super(ResNet_PyTorch, self).__init__()
         self.in_planes = 64
 
         self.conv1 = nn.Conv2d(
@@ -96,8 +98,8 @@ class BitCenterBasicBlock(BitCenterModule):
                  planes,
                  stride=1,
                  cast_func=void_cast_func,
-                 n_train_sample=n_train_sample):
-        super(BasicBlock, self).__init__()
+                 n_train_sample=1):
+        super(BitCenterBasicBlock, self).__init__()
 
         self.conv1 = BitCenterConv2D(
             in_planes,
@@ -112,10 +114,10 @@ class BitCenterBasicBlock(BitCenterModule):
         self.bn1 = BitCenterBatchNorm2D(
             planes, cast_func=cast_func, n_train_sample=n_train_sample)
 
-        self.relu1 = BitCenterRelu(
+        self.relu1 = BitCenterReLU(
             cast_func=cast_func, n_train_sample=n_train_sample)
 
-        self.conv2 = BitCenterBatchNorm2D(
+        self.conv2 = BitCenterConv2D(
             planes,
             planes,
             kernel_size=(3, 3),
@@ -128,50 +130,32 @@ class BitCenterBasicBlock(BitCenterModule):
         self.bn2 = BitCenterBatchNorm2D(
             planes, cast_func=cast_func, n_train_sample=n_train_sample)
 
-        self.relu2 = BitCenterRelu(
+        self.relu2 = BitCenterReLU(
             cast_func=cast_func, n_train_sample=n_train_sample)
 
         self.shortcut = BitCenterSequential()
+
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = BitCenterSequential(
                 BitCenterConv2D(
-                in_planes,
-                self.expansion * planes,
-                kernel_size=(1, 1),
-                stride=stride,
-                bias=False,
-                cast_func=cast_func,
-                n_train_sample=n_train_sample),
+                    in_planes,
+                    self.expansion * planes,
+                    kernel_size=(1, 1),
+                    stride=stride,
+                    bias=False,
+                    cast_func=cast_func,
+                    n_train_sample=n_train_sample),
                 BitCenterBatchNorm2D(
-                self.expansion * planes,
-                cast_func=cast_func,
-                n_train_sample=n_train_sample))
-            # self.shortcut_conv = BitCenterConv2D(
-            #     in_planes,
-            #     self.expansion * planes,
-            #     kernel_size=(1, 1),
-            #     stride=stride,
-            #     bias=False,
-            #     cast_func=cast_func,
-            #     n_train_sample=n_train_sample)
-
-            # self.shortcut_bn = BitCenterBatchNorm2D(
-            #     self.expansion * planes,
-            #     cast_func=cast_func,
-            #     n_train_sample=n_train_sample)
+                    self.expansion * planes,
+                    cast_func=cast_func,
+                    n_train_sample=n_train_sample))
 
     def forward(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu1(out)
-
         out = self.conv2(out)
         out = self.bn2(out)
-
-        # if (self.shortcut_conv is not None) and (self.shortcut_bn is not None):
-        #     out_shortcut = self.shortcut_conv(x)
-        #     out_shortcut = self.shortcut_bn(out_shortcut)
-        #     out += self.shortcut(x)
         self.shortcut(x)
         out = self.relu2(out)
         return out
@@ -185,7 +169,7 @@ class ResNet(BitCenterModule):
                  reg_lambda=0.0,
                  dtype="bc",
                  cast_func=void_cast_func,
-                 n_train_sample=n_train_sample):
+                 n_train_sample=1):
         super(ResNet, self).__init__()
         self.in_planes = 64
         self.reg_lambda = reg_lambda
@@ -193,7 +177,7 @@ class ResNet(BitCenterModule):
         self.cast_func = cast_func
         self.n_train_sample = n_train_sample
 
-        self.conv1 = BitCenterBatchNorm2D(
+        self.conv1 = BitCenterConv2D(
             3,
             64,
             kernel_size=(3, 3),
@@ -206,7 +190,7 @@ class ResNet(BitCenterModule):
         self.bn1 = BitCenterBatchNorm2D(
             64, cast_func=cast_func, n_train_sample=n_train_sample)
 
-        self.relu1 = BitCenterRelu(
+        self.relu1 = BitCenterReLU(
             cast_func=cast_func, n_train_sample=n_train_sample)
 
         self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
@@ -232,20 +216,36 @@ class ResNet(BitCenterModule):
         if dtype == "bc":
             pass
         elif (dtype == "fp") or (dtype == "lp"):
-            self.conv1 = copy_layer_weights(self.conv1, nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False))
-            self.bn1 = copy_layer_weights(self.bn1, nn.BatchNorm2d(64))
-            self.relu1 = nn.ReLU() 
-                       
-            layer1_n = ResNet_PyTorch._make_layer(self, BasicBlock, 64, num_blocks[0], stride=1)
-            self.layer1 = copy_module_weights(self.layer1, layer1_n)
-            self.layer2_n = ResNet_PyTorch._make_layer(self, BasicBlock, 128, num_blocks[1], stride=2)
-            self.layer3_n = ResNet_PyTorch._make_layer(self, BasicBlock, 256, num_blocks[2], stride=2)
-            self.layer4_n = ResNet_PyTorch._make_layer(self, BasicBlock, 512, num_blocks[3], stride=2)
+            # for fp and lp models, we use the origianl pytorch modules
+            # reset initial inplanes
+            self.in_planes = 64
+            self.conv1 = nn.Conv2d(3, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False)
+            # self.conv1 = copy_layer_weights(
+            #     self.conv1,
+            #     nn.Conv2d(
+            #         3, self.in_planes, kernel_size=3, stride=1, padding=1, bias=False))
+            self.bn1 = nn.BatchNorm2d(64)
+            # self.bn1 = copy_layer_weights(self.bn1, nn.BatchNorm2d(64))
+            self.relu1 = nn.ReLU()
 
-
+            self.layer1 = ResNet_PyTorch._make_layer(
+                self, BasicBlock, 64, num_blocks[0], stride=1)
+            # self.layer1 = copy_module_weights(self.layer1, layer1_n)
+            self.layer2 = ResNet_PyTorch._make_layer(
+                self, BasicBlock, 128, num_blocks[1], stride=2)
+            # self.layer2 = copy_module_weights(self.layer2, layer2_n)
+            self.layer3 = ResNet_PyTorch._make_layer(
+                self, BasicBlock, 256, num_blocks[2], stride=2)
+            # self.layer3 = copy_module_weights(self.layer3, layer3_n)
+            self.layer4 = ResNet_PyTorch._make_layer(
+                self, BasicBlock, 512, num_blocks[3], stride=2)
+            # self.layer4 = copy_module_weights(self.layer4, layer4_n)
 
             self.avg_pool = nn.AvgPool2d(kernel_size=(4, 4))
-            self.linear = copy_layer_weights(self.linear, nn.Linear(512 * BasicBlock.expansion, num_classes))
+            self.linear = nn.Linear(512 * BasicBlock.expansion, num_classes)
+            # self.linear = copy_layer_weights(
+            #     self.linear, nn.Linear(512 * BasicBlock.expansion,
+            #                            num_classes))
 
             self.criterion = nn.CrossEntropyLoss(size_average=True)
             if dtype == "lp":
@@ -261,11 +261,11 @@ class ResNet(BitCenterModule):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
+            layers.append(block(self.in_planes, planes, stride, self.cast_func, self.n_train_sample))
             self.in_planes = planes * block.expansion
         return BitCenterSequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, y, test=False):
         out = self.relu1(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
@@ -281,8 +281,8 @@ class ResNet(BitCenterModule):
             self.loss = self.criterion(out, y)
             if isinstance(self.criterion, BitCenterCrossEntropy) \
                 and self.criterion.do_offset == False:
-               # this is for the case where we want to get full output
-               # in the do_offset = False mode.
+                # this is for the case where we want to get full output
+                # in the do_offset = False mode.
                 self.output = self.output + self.criterion.input_lp
             return self.loss
 
@@ -290,3 +290,6 @@ class ResNet(BitCenterModule):
         output = self.forward(x, y=None, test=True)
         pred = output.data.cpu().numpy().argmax(axis=1)
         return pred, output
+
+    def check_layer_status(self, do_offset=True):
+        pass

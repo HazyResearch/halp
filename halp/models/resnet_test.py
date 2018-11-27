@@ -6,7 +6,8 @@ from halp.utils.utils import single_to_half_det, single_to_half_stoc, void_cast_
 from halp.utils.utils import copy_model_weights, set_seed
 from unittest import TestCase
 from halp.utils.test_utils import HalpTest
-from halp.models.resnet import ResNet, BitCenterResNet 
+from halp.models.resnet import ResNet, ResNet_PyTorch
+from halp.models.resnet import BasicBlock, BitCenterBasicBlock
 from halp.models.model_test import BitCenterModelTest
 
 
@@ -20,18 +21,24 @@ class LeNetTest(BitCenterModelTest, TestCase):
 
     def get_models(self, n_minibatch, batch_size, n_class):
         n_train_sample = batch_size * n_minibatch
-        native_model = LeNet_PyTorch().cuda().double()
-        fp_model = LeNet(
+        native_model = ResNet_PyTorch(BasicBlock, [2,2,2,2]).cuda().double()
+        fp_model = ResNet(
+            BitCenterBasicBlock,
+            [2,2,2,2],
             cast_func=void_cast_func,
             n_train_sample=n_train_sample,
             dtype="fp").cuda().double()
         copy_model_weights(native_model, fp_model)
-        lp_model = LeNet(
+        lp_model = ResNet(
+            BitCenterBasicBlock,
+            [2,2,2,2],
             cast_func=void_cast_func,
             n_train_sample=n_train_sample,
             dtype="lp").cuda().double()
         copy_model_weights(native_model, lp_model)
-        bc_model = LeNet(
+        bc_model = ResNet(
+            BitCenterBasicBlock,
+            [2,2,2,2],
             cast_func=void_cast_func,
             n_train_sample=n_train_sample,
             dtype="bc").double()

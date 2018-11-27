@@ -197,6 +197,7 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
         self.register_backward_hook(self.update_grad_output_cache)
 
     def setup_bit_center_stat(self):
+        # TODO consider change this to buffer to sync with orig bn implementation
         self.running_mean_delta = \
             Parameter(self.cast_func(self.running_mean), requires_grad=True)
         self.running_mean_lp = \

@@ -64,10 +64,10 @@ class BitCenterModuleList(BitCenterModule, nn.ModuleList):
         nn.ModuleList.__init__(self, modules)
 
 
-class BitCenterSequantial(BitCenterModule, nn.Sequential):
-    def __init__(self, modules=None):
+class BitCenterSequential(BitCenterModule, nn.Sequential):
+    def __init__(self, *modules):
         BitCenterModule.__init__(self)
-        nn.Sequential.__init__(self, modules)
+        nn.Sequential.__init__(self, *modules)
 
 
 class BitCenterLayer(BitCenterModule):
