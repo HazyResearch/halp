@@ -7,7 +7,8 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
-DOUBLE_PREC_DEBUG=False
+DOUBLE_PREC_DEBUG=True
+DOUBLE_PREC_DEBUG_EPOCH_LEN=11
 
 def single_to_half_det(tensor):
     return tensor.half()
@@ -99,7 +100,11 @@ def copy_model_weights(model_old, model_new):
         new_param.data.copy_(old_param.data)
 
 def copy_module_weights(module_old, module_new):
-    copy_model_weights(module_old, module_new)
+    for name, param in module_new.named_parameters():
+        old_param = get_recur_attr(module_old, name.split("."))
+        new_param = get_recur_attr(module_new, name.split("."))
+        new_param.data.copy_(old_param.data)
+    return module_new
 
 
 class UtilityTest(TestCase):

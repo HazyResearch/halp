@@ -199,14 +199,14 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
     def setup_bit_center_stat(self):
         # TODO consider change this to buffer to sync with orig bn implementation
         self.running_mean_delta = \
-            Parameter(self.cast_func(self.running_mean), requires_grad=True)
+            Parameter(self.cast_func(self.running_mean), requires_grad=False)
         self.running_mean_lp = \
-            Parameter(self.cast_func(self.running_mean), requires_grad=True)
+            Parameter(self.cast_func(self.running_mean), requires_grad=False)
 
         self.running_var_delta = \
-            Parameter(self.cast_func(self.running_var), requires_grad=True)
+            Parameter(self.cast_func(self.running_var), requires_grad=False)
         self.running_var_lp = \
-            Parameter(self.cast_func(self.running_var), requires_grad=True)
+            Parameter(self.cast_func(self.running_var), requires_grad=False)
 
     def reset_stat_bit_center(self):
         init.zeros_(self.running_mean_delta)

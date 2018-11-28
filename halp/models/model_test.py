@@ -7,10 +7,6 @@ from halp.utils.utils import copy_model_weights, set_seed
 from halp.utils.test_utils import HalpTest
 
 
-# Test whether it gives the same fw bw output given the same input
-# In this test, we compare to the original LeNet implementation
-# We test with a epoch with 2 minibatches, we compare the output
-# between fp32 model and fp32 bc model
 class BitCenterModelTest(HalpTest):
     """
     Test whether it gives the same fw bw output given the same input

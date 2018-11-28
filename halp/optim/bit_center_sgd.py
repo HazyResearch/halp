@@ -100,7 +100,7 @@ class BitCenterOptim(SGD):
         for param_group in self.param_groups:
             for p, p_name in zip(param_group["params"],
                              param_group["params_name"]):
-                if not p_name.endswith("_delta"):
+                if not p_name.endswith("_delta") or (not p.requires_grad):
                     continue
                 named_parameters.append((p_name, p))
         return named_parameters
