@@ -95,12 +95,16 @@ class BitCenterOptim(SGD):
         # cache iter is useful for bit centering SGD to retrieve gradient offset
         pass
 
-    def get_named_delta_parameters(self):
+    def get_named_delta_parameters(self, only_requires_grad=True):
+        """
+        if only_requires_grad, it would not return params that 
+        does not require gradient, including running statistics of batchnorm layers
+        """
         named_parameters = []
         for param_group in self.param_groups:
             for p, p_name in zip(param_group["params"],
                              param_group["params_name"]):
-                if not p_name.endswith("_delta") or (not p.requires_grad):
+                if not p_name.endswith("_delta") or (only_requires_grad and (not p.requires_grad)):
                     continue
                 named_parameters.append((p_name, p))
         return named_parameters
@@ -141,7 +145,9 @@ class BitCenterOptim(SGD):
         self.cache_iter = (self.cache_iter + 1) % self.n_minibatch_per_epoch
 
     def update_offset_vars(self):
-        named_delta_parameters = self.get_named_delta_parameters()
+        # we need to update both the parameters requiring gradient
+        # and those which does not, e.g the running statistics in batch norm
+        named_delta_parameters = self.get_named_delta_parameters(only_requires_grad=False)
         for p_name, p in named_delta_parameters:
             # update the offset variable and its lp version
             corr_found = False
@@ -179,12 +185,16 @@ class BitCenterOptim(SGD):
                 cache.zero_()
 
     def reset_delta_vars(self):
-        for param_group in self.param_groups:
-            for p, p_name in zip(param_group["params"],
-                                 param_group["params_name"]):
-                if p_name.endswith("_delta"):
-                    p.data.zero_()
+        named_delta_parameters = self.get_named_delta_parameters(only_requires_grad=False)
+        for p_name, p in named_delta_parameters:
+            p.data.zero_()
+        # for param_group in self.param_groups:
+        #     for p, p_name in zip(param_group["params"],
+        #                          param_group["params_name"]):
+        #         if p_name.endswith("_delta"):
+        #             p.data.zero_()
 
+ 
     # note we set the mode of model using the following
     # helpers. After each specific fp or lp phase,
     # we set model back to do_offset=True as the defaut

@@ -84,6 +84,8 @@ elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size)
 
+# TODO consider remove debug test flag not all the numerical test are done 
+# via DOUBLE_PREC_DEBUG flag
 if args.debug_test:
     args.cast_func = void_cast_func
     args.T = len(train_loader)
@@ -130,7 +132,11 @@ elif args.model == "lenet":
         n_train_sample=n_train_sample,
         dtype=args.dtype)
 elif args.model == "resnet":
-    model = ResNet18(cast_func=args.cast_func, n_train_sample=n_train_sample, dtype=args.dtype)
+    model = ResNet18(
+        reg_lambda=args.reg,
+        cast_func=args.cast_func,
+        n_train_sample=n_train_sample,
+        dtype=args.dtype)
 else:
     raise Exception(args.model + " is currently not supported!")
 

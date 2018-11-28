@@ -49,8 +49,6 @@ class BitCenterModule(nn.Module):
                 or (p.requires_grad == False):
                 continue
             if name + "_delta" in state_dict.keys():
-                # raise Exception(name +
-                #                 " is not found in the module state dict")
                 p_delta = state_dict[name + "_delta"]
                 param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_delta.data.type(torch.FloatTensor))**2).item()
             else:
@@ -111,7 +109,7 @@ class BitCenterLayer(BitCenterModule):
         self.set_mode(do_offset=True)
         if self.bias is not None:
             self.bias_delta = Parameter(
-                self.cast_func(self.bias), requires_grad=True)
+                self.cast_func(self.bias.data), requires_grad=True)
             self.bias_lp = Parameter(
                 self.cast_func(self.bias.data), requires_grad=False)
         else:
