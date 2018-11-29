@@ -209,6 +209,44 @@ class ResNet(BitCenterModule):
         self.criterion = BitCenterCrossEntropy(
             cast_func=cast_func, n_train_sample=n_train_sample)
 
+        # self.in_planes = int(64 / 4)
+        # self.conv1 = BitCenterConv2D(
+        #     3,
+        #     int(64 / 4),
+        #     kernel_size=(3, 3),
+        #     stride=1,
+        #     padding=1,
+        #     bias=False,
+        #     cast_func=cast_func,
+        #     n_train_sample=n_train_sample)
+
+        # self.bn1 = BitCenterBatchNorm2D(
+        #     int(64 / 4), cast_func=cast_func, n_train_sample=n_train_sample)
+
+        # self.relu1 = BitCenterReLU(
+        #     cast_func=cast_func, n_train_sample=n_train_sample)
+
+
+        # self.layer1 = self._make_layer(block, int(64 / 4), num_blocks[0], stride=1)
+        # self.layer2 = self._make_layer(block, int(128 / 4), num_blocks[1], stride=2)
+        # self.layer3 = self._make_layer(block, int(256 / 4), num_blocks[2], stride=2)
+        # self.layer4 = self._make_layer(block, int(512 / 4), num_blocks[3], stride=2)
+
+        # self.avg_pool = BitCenterAvgPool2D(
+        #     kernel_size=(4, 4),
+        #     cast_func=cast_func,
+        #     n_train_sample=n_train_sample)
+
+        # self.linear = BitCenterLinear(
+        #     int(512/4) * block.expansion,
+        #     num_classes,
+        #     bias=True,
+        #     cast_func=cast_func,
+        #     n_train_sample=n_train_sample)
+
+        # self.criterion = BitCenterCrossEntropy(
+        #     cast_func=cast_func, n_train_sample=n_train_sample)
+
         if dtype == "bc":
             pass
         elif (dtype == "fp") or (dtype == "lp"):
