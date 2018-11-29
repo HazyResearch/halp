@@ -101,6 +101,10 @@ def train_non_bit_center_optimizer(model,
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
+            # if DOUBLE_PREC_DEBUG and i == DOUBLE_PREC_DEBUG_EPOCH_LEN:
+            #     # this is only for double precision checking and debuging
+            #     # using a smaller dataset for quick check.
+            #     break
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
             if dtype == "lp":
@@ -169,6 +173,10 @@ def train_bit_center_optimizer(model,
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
+            # if DOUBLE_PREC_DEBUG and i == DOUBLE_PREC_DEBUG_EPOCH_LEN:
+            #     # this is only for double precision checking and debuging
+            #     # using a smaller dataset for quick check.
+            #     break
             if total_iter % T == 0:
                 optimizer.on_start_fp_steps(model)
                 for j, (X_fp, Y_fp) in enumerate(train_loader):
@@ -180,6 +188,11 @@ def train_bit_center_optimizer(model,
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
+
+                    # logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
+                    #     str(j) + " loss: " + str(loss_fp.item()))
+
+
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
             if use_cuda:

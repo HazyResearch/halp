@@ -197,21 +197,33 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
         self.register_backward_hook(self.update_grad_output_cache)
 
     def setup_bit_center_stat(self):
+        # to allow our optimizers to properly update the offset part of the
+        # running statistics, we need to turn the running stat from buffer to 
+        # parameter without gradient
+        self.running_mean = Parameter(self.running_mean.data.clone(), requires_grad=False)
+        self.running_var = Parameter(self.running_var.data.clone(), requires_grad=False)
         self.running_mean_delta = \
-            Parameter(self.cast_func(self.running_mean), requires_grad=True)
+            Parameter(self.cast_func(self.running_mean.data), requires_grad=False)
+        # self.running_mean_delta.zero_()
         self.running_mean_lp = \
-            Parameter(self.cast_func(self.running_mean), requires_grad=True)
+            Parameter(self.cast_func(self.running_mean.data), requires_grad=False)
 
         self.running_var_delta = \
-            Parameter(self.cast_func(self.running_var), requires_grad=True)
+            Parameter(self.cast_func(self.running_var.data), requires_grad=False)
+        # self.running_var_delta.zero_()
         self.running_var_lp = \
-            Parameter(self.cast_func(self.running_var), requires_grad=True)
+            Parameter(self.cast_func(self.running_var.data), requires_grad=False)
+
+        # print("double test ", torch.sum(self.running_var_lp**2), 
+        #     torch.sum(self.running_var**2), torch.sum(self.running_var_delta**2))
+
 
     def reset_stat_bit_center(self):
+        # lp value should inheritate the original lp value
         init.zeros_(self.running_mean_delta)
-        init.zeros_(self.running_mean_lp)
+        # init.zeros_(self.running_mean_lp)
         init.zeros_(self.running_var_delta)
-        init.zeros_(self.running_var_lp)
+        # init.zeros_(self.running_var_lp)
 
     def forward_fp(self, input):
         self.check_or_setup_input_cache(input)

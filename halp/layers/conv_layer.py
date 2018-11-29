@@ -85,12 +85,14 @@ class BitCenterConv2DFunction(Function):
             dilation=dilation,
             padding=padding,
             stride=stride)
-        ctx.save_for_backward(input_lp_unf, input_delta_unf, output_grad_lp,
-                              weight_lp, weight_delta, bias_lp, bias_delta)
-        ctx.hyperparam = (stride, padding, dilation, groups, input_lp.shape)
+        ctx.save_for_backward(input_lp, input_delta, output_grad_lp, weight_lp, weight_delta, bias_lp, bias_delta)
+        ctx.hyperparam = (kernel_size, stride, padding, dilation, groups, input_lp.shape)
         conv2d = lambda input_unf, weight: \
             input_unf.transpose(1, 2).matmul(
             weight.permute(1, 2, 3, 0).view(-1, weight.size(0)))
+
+        # print("inside ", input_delta_unf.transpose(1, 2).shape, weight_lp.permute(1, 2, 3, 0).view(-1, weight_lp.size(0)).shape, weight_lp.shape)
+
         output = conv2d(input_delta_unf, weight_lp) \
             + conv2d(input_lp_unf + input_delta_unf, weight_delta)
         # print(output.size(), output_size, kernel_size, input_lp.size(), weight_lp.size())
@@ -107,9 +109,22 @@ class BitCenterConv2DFunction(Function):
         In this function, suffix represent the results from torch unfold style im2col op
         '''
         # TODO extend to accommodate more configs for dilation, groups
-        input_lp_unf, input_delta_unf, output_grad_lp, \
-            weight_lp, weight_delta, bias_lp, bias_delta = ctx.saved_tensors
-        stride, padding, dilation, groups, input_shape = ctx.hyperparam
+        input_lp, input_delta, output_grad_lp, weight_lp, weight_delta, bias_lp, bias_delta = ctx.saved_tensors
+        kernel_size, stride, padding, dilation, groups, input_shape = ctx.hyperparam
+        # get unfolded input
+        input_lp_unf = F.unfold(
+            input_lp,
+            kernel_size,
+            dilation=dilation,
+            padding=padding,
+            stride=stride)
+        input_delta_unf = F.unfold(
+            input_delta,
+            kernel_size,
+            dilation=dilation,
+            padding=padding,
+            stride=stride)
+
         # assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
         batch_size, channel_out, w_out, h_out = list(grad_output.size())
         w_in, h_in = input_shape[-2:]
@@ -199,14 +214,8 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
 
     def forward_fp(self, input):
         self.check_or_setup_input_cache(input)
-        # if self.input_cache is None:
-        #     self.input_cache = self.setup_cache(input)
-        #     self.cache_iter = 0
         output = self.fp_func(input, self.weight, self.bias, self.stride,
                               self.padding, self.dilation, self.groups)
-        # if self.grad_output_cache is None:
-        #     self.grad_output_cache = self.setup_cache(output)
-        #     self.grad_cache_iter = 0
         self.check_or_setup_grad_cache(output)
         self.update_input_cache(input)
         return output
@@ -214,10 +223,6 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
     def forward_lp(self, input):
         # Need to test do_offset mode whether gradient is updated properly
         input_lp, grad_output_lp = self.get_input_cache_grad_cache(input)
-        # input_lp = self.input_cache[self.cache_iter:(
-        #     self.cache_iter + input.size(0))].cuda()
-        # grad_output_lp = \
-        #     self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         weight_lp = self.weight_lp
         weight_delta = self.weight_delta
@@ -228,8 +233,4 @@ class BitCenterConv2D(BitCenterLayer, Conv2d):
                               self.stride, self.padding, self.dilation,
                               self.groups)
         self.increment_cache_iter(input)
-        # self.cache_iter = (
-        #     self.cache_iter + input.size(0)) % self.n_train_sample
-        # self.grad_cache_iter = (
-        #     self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output

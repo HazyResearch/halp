@@ -12,6 +12,7 @@ from halp.optim.bit_center_svrg import BitCenterSVRG
 from halp.optim.svrg import SVRG
 from halp.models.logistic_regression import LogisticRegression
 from halp.models.lenet import LeNet
+from halp.models.resnet import ResNet18
 from halp.utils.mnist_data_utils import get_mnist_data_loader
 from halp.utils.cifar_data_utils import get_cifar10_data_loader
 from halp.utils import utils
@@ -27,7 +28,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 import time
 # the following is for setting up double precision based debugging
-from halp.utils.utils import DOUBLE_PREC_DEBUG
+from halp.utils.utils import DOUBLE_PREC_DEBUG, DOUBLE_PREC_DEBUG_EPOCH_LEN
 
 
 parser = argparse.ArgumentParser()
@@ -71,7 +72,7 @@ parser.add_argument("--dataset", default="mnist", type=str,
                     choices=["mnist", "cifar10"], 
                     help="The dataset to train on.")
 parser.add_argument("--model", default="logreg", type=str,
-                    choices=["logreg", "lenet"],
+                    choices=["logreg", "lenet", "resnet"],
                     help="The model used on the given dataset.")
 args = parser.parse_args()
 utils.set_seed(args.seed)
@@ -83,6 +84,8 @@ elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size)
 
+# TODO consider remove debug test flag not all the numerical test are done 
+# via DOUBLE_PREC_DEBUG flag
 if args.debug_test:
     args.cast_func = void_cast_func
     args.T = len(train_loader)
@@ -98,6 +101,7 @@ else:
 
 if DOUBLE_PREC_DEBUG:
     assert args.cast_func == void_cast_func
+    args.T = DOUBLE_PREC_DEBUG_EPOCH_LEN
 
 # TODO resolve this for trainin procedure and avoid this check
 print("dataset stats: n_batch, batch_size, T ", len(train_loader), args.batch_size, args.T)
@@ -123,6 +127,12 @@ if args.model == "logreg":
         n_train_sample=n_train_sample)
 elif args.model == "lenet":
     model = LeNet(
+        reg_lambda=args.reg,
+        cast_func=args.cast_func,
+        n_train_sample=n_train_sample,
+        dtype=args.dtype)
+elif args.model == "resnet":
+    model = ResNet18(
         reg_lambda=args.reg,
         cast_func=args.cast_func,
         n_train_sample=n_train_sample,

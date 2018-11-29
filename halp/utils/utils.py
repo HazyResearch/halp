@@ -7,10 +7,13 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
-DOUBLE_PREC_DEBUG=False
+DOUBLE_PREC_DEBUG = False
+DOUBLE_PREC_DEBUG_EPOCH_LEN = 3
+
 
 def single_to_half_det(tensor):
     return tensor.half()
+
 
 def single_to_half_stoc(tensor):
     if tensor.dtype == torch.half:
@@ -57,8 +60,9 @@ def single_to_half_stoc(tensor):
         output = output.cuda()
     return output
 
+
 def void_cast_func(tensor):
-    return tensor
+    return tensor.clone()
 
 
 def get_recur_attr(obj, attr_str_list):
@@ -83,6 +87,11 @@ def copy_layer_weights(layer_old, layer_new):
     layer_new.weight.data.copy_(layer_old.weight)
     if layer_new.bias is not None:
         layer_new.bias.data.copy_(layer_old.bias)
+    # copy bn stats
+    if hasattr(layer_new, 'running_mean'):
+        layer_new.running_mean.data.copy_(layer_old.running_mean)
+    if hasattr(layer_new, 'running_var'):
+        layer_new.running_var.data.copy_(layer_old.running_var)
     return layer_new
 
 
@@ -92,6 +101,14 @@ def copy_model_weights(model_old, model_new):
         old_param = get_recur_attr(model_old, name.split("."))
         new_param = get_recur_attr(model_new, name.split("."))
         new_param.data.copy_(old_param.data)
+
+
+def copy_module_weights(module_old, module_new):
+    for name, param in module_new.named_parameters():
+        old_param = get_recur_attr(module_old, name.split("."))
+        new_param = get_recur_attr(module_new, name.split("."))
+        new_param.data.copy_(old_param.data)
+    return module_new
 
 
 class UtilityTest(TestCase):
@@ -115,8 +132,7 @@ class UtilityTest(TestCase):
         t_out = single_to_half_stoc(torch.FloatTensor(t))
         assert (t_out.cpu().numpy() == np.finfo(dtype=np.float16).min).all()
 
-
-        # assert the probability to the left and right side 
+        # assert the probability to the left and right side
         # present the right ratio
         np.random.seed(2)
         cubic_size = 100
@@ -137,10 +153,10 @@ class UtilityTest(TestCase):
                     orig = t_np[i, j]
                     upper_cnt = np.sum(res[:, i, j] == upper)
                     lower_cnt = np.sum(res[:, i, j] == lower)
-                    ratio_cnt = float(upper_cnt)/float(lower_cnt)
+                    ratio_cnt = float(upper_cnt) / float(lower_cnt)
                     ratio_val = (orig - lower) / (upper - orig)
                     # we use a very loose ratio error to test here
-                    # so that it is unlikely to fail due to 
+                    # so that it is unlikely to fail due to
                     # extreme samples. Finer grain confirmation can be done using
                     # the following two print.
                     # print(i, j, upper, lower, orig)
@@ -151,10 +167,8 @@ class UtilityTest(TestCase):
                         assert ratio_val < 1
         logger.info("stochastic rounding test passed!")
 
-
     def test_single_to_half_det(self):
         pass
-
 
 
 if __name__ == "__main__":
