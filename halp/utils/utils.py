@@ -7,7 +7,7 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
-DOUBLE_PREC_DEBUG = False
+DOUBLE_PREC_DEBUG = True
 DOUBLE_PREC_DEBUG_EPOCH_LEN = 3
 
 

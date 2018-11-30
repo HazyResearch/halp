@@ -6,9 +6,86 @@ import math
 from halp.optim.bit_center_sgd import BitCenterOptim, BitCenterSGD
 from halp.optim.bit_center_svrg import BitCenterSVRG
 from halp.optim.svrg import SVRG
+from halp.utils.utils import get_recur_attr
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 from halp.utils.utils import DOUBLE_PREC_DEBUG
+from copy import deepcopy
+
+# this function can load a normal model to a bc model
+def load_model(model, state_dict):
+    state_dict = deepcopy(state_dict)
+    for name, ref_param in state_dict.items():
+        model_param = get_recur_attr(model, name.split("."))
+        ref_param = state_dict[name]
+        model_param.data.copy_(ref_param.data)
+        logger.info("loaded model parameter " + name)
+
+
+# this is mostly for loading the momentum terms
+def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
+    ref_state_dict = deepcopy(state_dict)
+    opt_state_dict = optimizer.state_dict()
+    # TODO need to deal with casting functions
+    # named_delta_parameters = optimizer.get_named_delta_parameters(only_requires_grad=True)
+    for name, param in model.named_parameters():
+        if to_bc_opt:
+            ref_name = name.split("_delta")[0]
+        else:
+            ref_name = name
+        if ref_name not in state_dict.keys():
+            continue
+        optimizer.state[param] = state_dict[ref_name]
+        logger.info("opt param state loaded for " + name)
+
+
+def get_named_opt_param_state(model, optimizer):
+    # when constructing the optimizers, we have forced the order 
+    # of parameters in the same way.
+    opt_state_dict = {}
+    for name, param in model.named_parameters():
+        opt_state_dict[name] = optimizer.state[param]
+    return opt_state_dict
+
+
+class StepLRScheduler(object):
+    def __init__(self, optimizer, step_epoch=(1, 2), step_fac=0.1):
+        self.optimizer = optimizer
+        self.step_epoch = step_epoch
+        self.step_fac = step_fac
+        self.do_save = False
+
+    def turn_on(self):
+        self.do_save = True
+
+    def check_and_step(self, epoch_id, iter_id, train_dataloader):
+        if self.do_save and (epoch_id in self.step_epoch) and (iter_id == 0):
+            for group in self.optimizer.param_groups:
+                group["lr"] *= self.step_fac
+        if iter_id == 0:
+            for group in self.optimizer.param_groups:
+                logger.info("lr at epoch " + str(epoch_id) + " " + str(group["lr"]))
+
+
+class ModelSaver(object):
+    def __init__(self, optimizer, model, step_epoch=[1, 2], save_path="./"):
+        self.optimizer = optimizer
+        self.model = model
+        self.step_epoch = step_epoch
+        self.save_path = save_path
+        self.do_save = False
+
+    def turn_on(self):
+        self.do_save = True
+
+    def check_and_save(self, epoch_id, iter_id, train_dataloader):
+        if self.do_save and (epoch_id in self.step_epoch) and (iter_id == 0):
+            torch.save(self.model.state_dict(), 
+                self.save_path + "/model_e_" + str(epoch_id) + "_i_" + str(iter_id))
+            opt_param_state = get_named_opt_param_state(self.model, self.optimizer)
+            torch.save(opt_param_state,
+                self.save_path + "/opt_e_" + str(epoch_id) + "_i_" + str(iter_id))
+            logger.info("model saved at epoch " + str(epoch_id))
 
 
 def get_grad_norm(optimizer, model):
@@ -101,6 +178,8 @@ def train_non_bit_center_optimizer(model,
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
+            optimizer.lr_scheduler.check_and_step(epoch_id, i, train_loader)
+            optimizer.model_saver.check_and_save(epoch_id, i, train_loader)
             # if DOUBLE_PREC_DEBUG and i == DOUBLE_PREC_DEBUG_EPOCH_LEN:
             #     # this is only for double precision checking and debuging
             #     # using a smaller dataset for quick check.
