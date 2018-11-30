@@ -99,25 +99,32 @@
 # python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=100 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=391  --dataset=cifar10  --model=lenet  --cuda
 
 
-# resnet verification runs
-# make sure turn on DEBUG on 
-# test if 0 weight decay works properly
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# test if non zero weight decay works properly
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# test if non zero weight decay + momentum works properly
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # resnet verification runs
+# # make sure turn on DEBUG on 
+# # test if 0 weight decay works properly
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # test if non zero weight decay works properly
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.05 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # test if non zero weight decay + momentum works properly
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.5 --alpha=0.5 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# # python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=5e-4 --alpha=0.05 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+
+
+# # resnet warm start verification runs
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-save-ckpt --resnet-save-ckpt-path=./test --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.001 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+
 

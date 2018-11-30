@@ -21,6 +21,8 @@ from halp.utils.utils import single_to_half_det, single_to_half_stoc
 from halp.utils.train_utils import evaluate_acc
 from halp.utils.train_utils import train_non_bit_center_optimizer
 from halp.utils.train_utils import train_bit_center_optimizer
+from halp.utils.train_utils import StepLRScheduler, ModelSaver
+from halp.utils.train_utils import load_model, load_state_to_optimizer
 from halp.utils.mnist_data_utils import get_mnist_data_loader
 import logging
 import sys
@@ -74,6 +76,14 @@ parser.add_argument("--dataset", default="mnist", type=str,
 parser.add_argument("--model", default="logreg", type=str,
                     choices=["logreg", "lenet", "resnet"],
                     help="The model used on the given dataset.")
+parser.add_argument("--resnet-save-ckpt", action="store_true", 
+                    help="save check points for resnet18")
+parser.add_argument("--resnet-save-ckpt-path", type=str, default="./",
+                    help="path to save resnet18 check points")
+parser.add_argument("--resnet-load-ckpt", action="store_true", 
+                    help="load check points for resnet18")
+parser.add_argument("--resnet-load-ckpt-epoch-id", type=int, default=0,
+                    help="warm start using a checkpoint saved at this epoch id")
 args = parser.parse_args()
 utils.set_seed(args.seed)
 
@@ -196,6 +206,37 @@ elif args.solver == "bc-svrg":
         T=args.T)
 else:
     raise Exception(args.solver + " is an unsupported optimizer.")
+
+# for warm start experiments for resnet.
+# the scheduler and the saver is only working when it is turn_on()
+optimizer.lr_scheduler = StepLRScheduler(
+    optimizer, step_epoch=[2, 4], step_fac=0.1)
+optimizer.model_saver = ModelSaver(
+    optimizer, model, step_epoch=np.arange(0, 6, 2), save_path=args.resnet_save_ckpt_path)
+if args.resnet_save_ckpt:
+    if args.model != "resnet":
+        raise Exception("Check point saving mode is only designed for resnet experiments")
+    if args.solver != "sgd" and args.solver != "lp-sgd":
+        raise Exception("Check point saving mode is only designed for fp and lp-sgd optimizer") 
+    assert args.n_epochs == 350
+    assert args.alpha == 0.1
+    optimizer.lr_scheduler.turn_on()
+    optimizer.model_saver.turn_on()
+    logger.info("model saver and lr scheduler saved")
+if args.resnet_load_ckpt: 
+    assert args.resnet_save_ckpt == False
+    model_ckpt = args.resnet_save_ckpt_path + "/model_e_" + str(args.resnet_load_ckpt_epoch_id) + "_i_0"
+    opt_ckpt = args.resnet_save_ckpt_path + "/opt_e_" + str(args.resnet_load_ckpt_epoch_id) + "_i_0"    
+    model_state_dict = torch.load(model_ckpt)
+    opt_state_dict = torch.load(opt_ckpt)
+    # for key in model_state_dict.keys():
+    #     logger.info("To load model state " + key)
+    # for key in opt_state_dict.keys():
+    #     logger.info("To load opt state " + key)
+    load_model(model, model_state_dict)
+    load_state_to_optimizer(optimizer, model, opt_state_dict, to_bc_opt=("bc-" in args.solver))
+    # optimizer.load_state_dict(opt_state_dict) 
+    logger.info("model and optimizer loaded from " + model_ckpt)
 
 try:
     print("regularizer ", model.reg_lambda, optimizer.weight_decay)
