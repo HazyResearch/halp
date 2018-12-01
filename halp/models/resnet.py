@@ -290,6 +290,47 @@ class ResNet(BitCenterModule):
 
             self.criterion = copy_module_weights(
                 self.criterion, nn.CrossEntropyLoss(size_average=True))
+
+
+            # self.in_planes = int(64 / 4)
+            # self.conv1 = copy_module_weights(
+            #     self.conv1,
+            #     nn.Conv2d(
+            #         3,
+            #         self.in_planes,
+            #         kernel_size=3,
+            #         stride=1,
+            #         padding=1,
+            #         bias=False))
+            # self.bn1 = copy_module_weights(self.bn1, nn.BatchNorm2d(int(64/4)))
+            # self.relu1 = copy_module_weights(self.relu1, nn.ReLU())
+
+            # self.layer1 = copy_module_weights(
+            #     self.layer1,
+            #     ResNet_PyTorch._make_layer(
+            #         self, BasicBlock, int(64/4), num_blocks[0], stride=1))
+            # self.layer2 = copy_module_weights(
+            #     self.layer2,
+            #     ResNet_PyTorch._make_layer(
+            #         self, BasicBlock, int(128/4), num_blocks[1], stride=2))
+            # self.layer3 = copy_module_weights(
+            #     self.layer3,
+            #     ResNet_PyTorch._make_layer(
+            #         self, BasicBlock, int(256/4), num_blocks[2], stride=2))
+            # self.layer4 = copy_module_weights(
+            #     self.layer4,
+            #     ResNet_PyTorch._make_layer(
+            #         self, BasicBlock, int(512/4), num_blocks[3], stride=2))
+
+            # self.avg_pool = copy_module_weights(
+            #     self.avg_pool, nn.AvgPool2d(kernel_size=(4, 4)))
+            # self.linear = copy_module_weights(
+            #     self.linear, nn.Linear(int(512/4) * BasicBlock.expansion,
+            #                            num_classes))
+
+            # self.criterion = copy_module_weights(
+            #     self.criterion, nn.CrossEntropyLoss(size_average=True))
+
             if dtype == "lp":
                 if self.cast_func == void_cast_func:
                     pass

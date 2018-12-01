@@ -12,13 +12,19 @@ logger = logging.getLogger('')
 from halp.utils.utils import DOUBLE_PREC_DEBUG
 from copy import deepcopy
 
+
 # this function can load a normal model to a bc model
-def load_model(model, state_dict):
+def load_param_to_model(model, state_dict, to_bc_model=False):
     state_dict = deepcopy(state_dict)
     for name, ref_param in state_dict.items():
         model_param = get_recur_attr(model, name.split("."))
         ref_param = state_dict[name]
         model_param.data.copy_(ref_param.data)
+        if to_bc_model and name + "_lp" in model.state_dict().keys():
+            # if this is a bit centering based model, we need
+            # to update its lp copy of the fp offset
+            model_param_lp = get_recur_attr(model, (name + "_lp").split("."))
+            model_param_lp.data.copy_(model.cast_func(ref_param.data))
         logger.info("loaded model parameter " + name)
 
 
@@ -26,21 +32,42 @@ def load_model(model, state_dict):
 def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
     ref_state_dict = deepcopy(state_dict)
     opt_state_dict = optimizer.state_dict()
+    assert len(optimizer.param_groups
+               ) == 1  # we currently only consider 1 param group case
+    lr_after_ckpt = optimizer.param_groups[0]["lr"]
     # TODO need to deal with casting functions
     # named_delta_parameters = optimizer.get_named_delta_parameters(only_requires_grad=True)
-    for name, param in model.named_parameters():
-        if to_bc_opt:
+    load_cnt = 0
+    if to_bc_opt:
+        for name, param in optimizer.get_named_delta_parameters(
+                only_requires_grad=True):
             ref_name = name.split("_delta")[0]
-        else:
+            if ref_name not in ref_state_dict.keys():
+                continue
+            # note the definition of momentum in bc and normal sgd is different
+            # in bc optimizer momentum includes lr as a factor already,
+            # while normal sgd optimizer does not.
+            ref_state_dict[ref_name]["momentum_buffer"].mul_(lr_after_ckpt)
+            optimizer.state[param] = ref_state_dict[ref_name]
+            optimizer.state[param]["momentum_buffer"] = model.cast_func(
+                optimizer.state[param]["momentum_buffer"])
+            load_cnt += 1
+            logger.info("opt param state loaded for " + name)
+    else:
+        for name, param in model.named_parameters():
             ref_name = name
-        if ref_name not in state_dict.keys():
-            continue
-        optimizer.state[param] = state_dict[ref_name]
-        logger.info("opt param state loaded for " + name)
+            if ref_name not in ref_state_dict.keys():
+                continue
+            optimizer.state[param] = ref_state_dict[ref_name]
+            optimizer.state[param]["momentum_buffer"] = model.cast_func(
+                optimizer.state[param]["momentum_buffer"])
+            load_cnt += 1
+            logger.info("opt param state loaded for " + name)
+    logger.info("loaded opt param state for " + str(load_cnt) + " params.")
 
 
 def get_named_opt_param_state(model, optimizer):
-    # when constructing the optimizers, we have forced the order 
+    # when constructing the optimizers, we have forced the order
     # of parameters in the same way.
     opt_state_dict = {}
     for name, param in model.named_parameters():
@@ -64,7 +91,8 @@ class StepLRScheduler(object):
                 group["lr"] *= self.step_fac
         if iter_id == 0:
             for group in self.optimizer.param_groups:
-                logger.info("lr at epoch " + str(epoch_id) + " " + str(group["lr"]))
+                logger.info("lr at epoch " + str(epoch_id) + " " +
+                            str(group["lr"]))
 
 
 class ModelSaver(object):
@@ -80,11 +108,19 @@ class ModelSaver(object):
 
     def check_and_save(self, epoch_id, iter_id, train_dataloader):
         if self.do_save and (epoch_id in self.step_epoch) and (iter_id == 0):
-            torch.save(self.model.state_dict(), 
-                self.save_path + "/model_e_" + str(epoch_id) + "_i_" + str(iter_id))
-            opt_param_state = get_named_opt_param_state(self.model, self.optimizer)
-            torch.save(opt_param_state,
-                self.save_path + "/opt_e_" + str(epoch_id) + "_i_" + str(iter_id))
+            torch.save(
+                self.model.state_dict(), self.save_path + "/model_e_" +
+                str(epoch_id) + "_i_" + str(iter_id))
+            # get the param state, e.g. momentum for saving
+            opt_param_state = get_named_opt_param_state(
+                self.model, self.optimizer)
+            # also save the current learning rate
+            assert len(self.optimizer.param_groups) == 1
+            opt_param_state["lr_at_ckpt"] = self.optimizer.param_groups[0][
+                "lr"]
+            torch.save(
+                opt_param_state, self.save_path + "/opt_e_" + str(epoch_id) +
+                "_i_" + str(iter_id))
             logger.info("model saved at epoch " + str(epoch_id))
 
 
@@ -122,7 +158,8 @@ def get_grad_norm(optimizer, model):
             for p_name, p in model.named_parameters():
                 if p.requires_grad:
                     # note the optimizer has already add weight decay to grad variable
-                    norm += torch.sum(p.grad.data.type(torch.FloatTensor)**2).item()
+                    norm += torch.sum(p.grad.data.type(torch.FloatTensor)
+                                      **2).item()
         else:
             for p_name, p in model.named_parameters():
                 if p.requires_grad:
@@ -178,8 +215,8 @@ def train_non_bit_center_optimizer(model,
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
-            optimizer.lr_scheduler.check_and_step(epoch_id, i, train_loader)
             optimizer.model_saver.check_and_save(epoch_id, i, train_loader)
+            optimizer.lr_scheduler.check_and_step(epoch_id, i, train_loader)
             # if DOUBLE_PREC_DEBUG and i == DOUBLE_PREC_DEBUG_EPOCH_LEN:
             #     # this is only for double precision checking and debuging
             #     # using a smaller dataset for quick check.
@@ -198,6 +235,7 @@ def train_non_bit_center_optimizer(model,
             train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
                 Y.size(0))
             train_loss.backward()
+
             if optimizer.__class__.__name__ == "SVRG":
 
                 def svrg_closure(data=X, target=Y):
@@ -220,6 +258,7 @@ def train_non_bit_center_optimizer(model,
             else:
                 grad_norm = get_grad_norm(optimizer, model)
                 optimizer.step()
+
             param_norm = model.get_trainable_param_squared_norm()
             train_loss_list.append(train_loss.item() +
                                    0.5 * model.reg_lambda * param_norm)
@@ -267,10 +306,9 @@ def train_bit_center_optimizer(model,
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
-
-                    # logger.info("train loss epoch: " + str(epoch_id) + " iter: " +
-                    #     str(j) + " loss: " + str(loss_fp.item()))
-
+                    # logger.info("prep train loss epoch: " + str(epoch_id) +
+                    #             " iter: " + str(j) + " loss: " +
+                    #             str(loss_fp.item()))
 
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
@@ -292,6 +330,7 @@ def train_bit_center_optimizer(model,
             train_loss.backward()
             grad_norm = get_grad_norm(optimizer, model)
             optimizer.step_lp()
+
             if total_iter % T == T - 1:
                 optimizer.on_end_lp_steps(model)
             total_iter += 1

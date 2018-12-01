@@ -23,7 +23,10 @@ def run_experiment(exp_name,
                    dataset,
                    model,
                    cluster="starcluster",
-                   run_option="dryrun"):
+                   run_option="dryrun",
+                   resnet_save_ckpt=False,
+                   resnet_load_ckpt=False,
+                   resnet_load_ckpt_epoch_id=0):
     template = "python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py " \
                + "--n-epochs=unk " \
                + "--batch-size=unk " \
@@ -79,9 +82,18 @@ def run_experiment(exp_name,
                                     "--solver=unk", "--solver=" + opt)
                                 os.system("mkdir -p " + save_path + save_suffix)
                                 command = "cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && " + command
+                                # deal with saving and loading related issues
+                                assert (resnet_save_ckpt == False) or (resnet_load_ckpt == False)
+                                if resnet_save_ckpt:
+                                  command = command + " --resnet-save-ckpt " + " --resnet-save-ckpt-path=" + save_path + save_suffix
+                                if resnet_load_ckpt:
+                                  command = command + " --resnet-load-ckpt " + " --resnet-save-ckpt-path=" + save_path + save_suffix \
+                                    + " --resnet-load-ckpt-epoch-id=" + str(resnet_load_ckpt_epoch_id)
+
                                 f = open(save_path + save_suffix + "/job.sh", "w")
                                 f.write(command)
                                 f.close()
+
                                 if cluster == "starcluster":
                                     launch_command = "qsub -V " \
                                     + " -o " + save_path + save_suffix + "/run.log " \

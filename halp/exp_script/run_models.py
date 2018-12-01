@@ -22,7 +22,7 @@ from halp.utils.train_utils import evaluate_acc
 from halp.utils.train_utils import train_non_bit_center_optimizer
 from halp.utils.train_utils import train_bit_center_optimizer
 from halp.utils.train_utils import StepLRScheduler, ModelSaver
-from halp.utils.train_utils import load_model, load_state_to_optimizer
+from halp.utils.train_utils import load_param_to_model, load_state_to_optimizer
 from halp.utils.mnist_data_utils import get_mnist_data_loader
 import logging
 import sys
@@ -210,9 +210,11 @@ else:
 # for warm start experiments for resnet.
 # the scheduler and the saver is only working when it is turn_on()
 optimizer.lr_scheduler = StepLRScheduler(
-    optimizer, step_epoch=[2, 4], step_fac=0.1)
+    optimizer, step_epoch=[150, 250], step_fac=0.1)
+# specify the epochs where to save check points
+save_step_epochs = np.array([1, 10, 50, 100, 150, 151, 200, 251, 300])
 optimizer.model_saver = ModelSaver(
-    optimizer, model, step_epoch=np.arange(0, 6, 2), save_path=args.resnet_save_ckpt_path)
+    optimizer, model, step_epoch=save_step_epochs, save_path=args.resnet_save_ckpt_path)
 if args.resnet_save_ckpt:
     if args.model != "resnet":
         raise Exception("Check point saving mode is only designed for resnet experiments")
@@ -229,11 +231,7 @@ if args.resnet_load_ckpt:
     opt_ckpt = args.resnet_save_ckpt_path + "/opt_e_" + str(args.resnet_load_ckpt_epoch_id) + "_i_0"    
     model_state_dict = torch.load(model_ckpt)
     opt_state_dict = torch.load(opt_ckpt)
-    # for key in model_state_dict.keys():
-    #     logger.info("To load model state " + key)
-    # for key in opt_state_dict.keys():
-    #     logger.info("To load opt state " + key)
-    load_model(model, model_state_dict)
+    load_param_to_model(model, model_state_dict, to_bc_model=("bc-" in args.solver))
     load_state_to_optimizer(optimizer, model, opt_state_dict, to_bc_opt=("bc-" in args.solver))
     # optimizer.load_state_dict(opt_state_dict) 
     logger.info("model and optimizer loaded from " + model_ckpt)
