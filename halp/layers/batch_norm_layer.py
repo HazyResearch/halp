@@ -104,7 +104,7 @@ class BitCenterBatchNormFunction(Function):
             torch.Tensor([
                 momentum,
             ]).type(sigma_sq_delta.dtype).item(),
-            batch_var_full.squeeze() * m / float(m - 1.0) - sigma_sq_lp)
+            batch_var_full.squeeze() * (m / float(m - 1.0)) - sigma_sq_lp)
 
         x_hat_lp = \
          (input_lp - expand_param_as_input(batch_mean_lp, input_lp)) \

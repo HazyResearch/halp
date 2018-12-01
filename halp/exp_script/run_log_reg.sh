@@ -124,7 +124,21 @@
 
 # # resnet warm start verification runs
 python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-save-ckpt --resnet-save-ckpt-path=./test --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=0.0 --alpha=0.001 --momentum=0.0 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=0.0 --alpha=0.001 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=0.0005 --alpha=0.001 --momentum=0.0 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=0.0005 --alpha=0.001 --momentum=0.0 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=0.0 --alpha=0.001 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=0.0 --alpha=0.001 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+
 python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.001 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
-# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=4 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.001 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=void  -T=11  --dataset=cifar10  --model=resnet  --cuda
+# a full saving run template 
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-save-ckpt --resnet-save-ckpt-path=./test --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=near  -T=391  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=1 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-sgd  --rounding=near  -T=391  --dataset=cifar10  --model=resnet  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --resnet-load-ckpt --resnet-save-ckpt-path=./test --resnet-load-ckpt-epoch-id=1 --n-epochs=350 --batch-size=128 --reg=5e-4 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-sgd  --rounding=near  -T=391  --dataset=cifar10  --model=resnet  --cuda
 
 

@@ -55,6 +55,18 @@ class BitCenterModule(nn.Module):
                 param_norm += torch.sum(p.data.type(torch.FloatTensor)**2).item()
         return param_norm
 
+    def get_named_offset_plus_delta_parameters(self):
+        state_dict = self.state_dict()
+        param_list = []
+        for name, p in self.named_parameters():
+            if name.endswith("_delta"):
+                p_lp = state_dict[name.split("_delta")[0] + "_lp"]
+
+                p_full = p_lp + p
+                param_list.append((name, p_full))
+        return param_list
+
+
 
 class BitCenterModuleList(BitCenterModule, nn.ModuleList):
     def __init__(self, modules=None):
