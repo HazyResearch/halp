@@ -10,7 +10,7 @@ logger = logging.getLogger('')
 DOUBLE_PREC_DEBUG = False
 DOUBLE_PREC_DEBUG_EPOCH_LEN = 3
 
-LP_DEBUG = True
+LP_DEBUG = False
 LP_DEBUG_EPOCH_LEN = 3
 
 
