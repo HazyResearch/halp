@@ -26,7 +26,8 @@ def run_experiment(exp_name,
                    run_option="dryrun",
                    resnet_save_ckpt=False,
                    resnet_load_ckpt=False,
-                   resnet_load_ckpt_epoch_id=0):
+                   resnet_load_ckpt_epoch_id=0,
+                   ckpt_path="./test/"):
     template = "python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py " \
                + "--n-epochs=unk " \
                + "--batch-size=unk " \
@@ -45,6 +46,7 @@ def run_experiment(exp_name,
     opt = "sgd"
     epoch = 300
     save_path = "/dfs/scratch0/zjian/floating_halp/exp_res/" + exp_name + "/"
+    ckpt_path = "/dfs/scratch0/zjian/floating_halp/exp_res/" + ckpt_path + "/"
     os.system("mkdir -p " + save_path)
     
     template = template.replace("--n-epochs=unk",
@@ -87,8 +89,9 @@ def run_experiment(exp_name,
                                 if resnet_save_ckpt:
                                   command = command + " --resnet-save-ckpt " + " --resnet-save-ckpt-path=" + save_path + save_suffix
                                 if resnet_load_ckpt:
-                                  command = command + " --resnet-load-ckpt " + " --resnet-save-ckpt-path=" + save_path + save_suffix \
+                                  command = command + " --resnet-load-ckpt " + " --resnet-save-ckpt-path=" + ckpt_path \
                                     + " --resnet-load-ckpt-epoch-id=" + str(resnet_load_ckpt_epoch_id)
+                                  command = command.replace("seed_unk", "seed_" + str(seed))
 
                                 f = open(save_path + save_suffix + "/job.sh", "w")
                                 f.write(command)

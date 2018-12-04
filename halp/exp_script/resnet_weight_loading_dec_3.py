@@ -5,6 +5,7 @@ from halp.utils.launching_utils import run_experiment
 
 if __name__ == "__main__":
     exp_name = "resnet_weight_loading_dec_3"
+    ckpt_path = "resnet_weight_saving_nov_30/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_unk"
     n_epochs = 50 # to resume from 300
     # n_epochs = 25 # to resume from 325
     batch_size = 128
@@ -17,14 +18,14 @@ if __name__ == "__main__":
     # lr_list = [0.01, ]
     momentum_list = [0.9,]
     # seed_list = [1,]
-    opt_algo_list = ["bc-sgd"]
+    opt_algo_list = ["lp-sgd"]
     # opt_algo_list = ["sgd"]
 
     rounding_list = ["near"]
     T_list = [391]
     dataset = "cifar10"
     model = "resnet"
-    #run_option = "dryrun"
+    # run_option = "dryrun"
     run_option = "run"
     run_experiment(
         exp_name,
@@ -45,4 +46,5 @@ if __name__ == "__main__":
         run_option=run_option,
         resnet_load_ckpt=True,
         # resnet_load_ckpt_epoch_id=325,
-        resnet_load_ckpt_epoch_id=300)
+        resnet_load_ckpt_epoch_id=300,
+        ckpt_path=ckpt_path)
