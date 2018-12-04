@@ -27,7 +27,6 @@ def load_param_to_model(model, state_dict, to_bc_model=False):
             model_param_lp.data.copy_(model.cast_func(ref_param.data))
         logger.info("loaded model parameter " + name)
 
-
 # this is mostly for loading the momentum terms
 def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
     ref_state_dict = deepcopy(state_dict)
@@ -64,7 +63,6 @@ def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
             load_cnt += 1
             logger.info("opt param state loaded for " + name)
     logger.info("loaded opt param state for " + str(load_cnt) + " params.")
-
 
 def get_named_opt_param_state(model, optimizer):
     # when constructing the optimizers, we have forced the order
@@ -166,6 +164,7 @@ def get_grad_norm(optimizer, model):
                     norm += torch.sum((p.grad.data.type(torch.FloatTensor) \
                                       + weight_decay * p.data.type(torch.FloatTensor))
                                       **2).item()
+                    # print("non bc grad ", torch.sum(p.grad.data.type(torch.FloatTensor)**2)*lr**2)
     return math.sqrt(norm)
 
 
@@ -309,9 +308,9 @@ def train_bit_center_optimizer(model,
                     # logger.info("prep train loss epoch: " + str(epoch_id) +
                     #             " iter: " + str(j) + " loss: " +
                     #             str(loss_fp.item()))
-
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
+
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
             # note here X is the input delta. It is suppose to be zero.
@@ -342,6 +341,7 @@ def train_bit_center_optimizer(model,
                         " grad_norm: " + str(grad_norm) + " acc: " +
                         str(train_acc) + " regularizer: " +
                         str(0.5 * model.reg_lambda * param_norm))
+
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
         optimizer.on_start_fp_steps(model)

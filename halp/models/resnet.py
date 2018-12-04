@@ -351,19 +351,29 @@ class ResNet(BitCenterModule):
         return BitCenterSequential(*layers)
 
     def forward(self, x, y, test=False):
+        # print("ckpt 0 ", torch.sum(x**2).item())
         out = self.relu1(self.bn1(self.conv1(x)))
+        # print("ckpt 1 ", torch.sum(out**2).item())
         out = self.layer1(out)
+        # print("ckpt 2 ", torch.sum(out**2).item())
         out = self.layer2(out)
+        # print("ckpt 3 ", torch.sum(out**2).item())
         out = self.layer3(out)
+        # print("ckpt 4 ", torch.sum(out**2).item())
         out = self.layer4(out)
+        # print("ckpt 5 ", torch.sum(out**2).item())
         out = self.avg_pool(out)
+        # print("ckpt 6 ", torch.sum(out**2).item())
         out = out.view(out.size(0), -1)
+        # print("ckpt 7 ", torch.sum(out**2).item())
         out = self.linear(out)
+        # print("ckpt 8 ", torch.sum(out**2).item())
         self.output = out
         if test:
             return out
         else:
             self.loss = self.criterion(out, y)
+            # print("ckpt 9 ", torch.sum(self.loss**2).item())
             if isinstance(self.criterion, BitCenterCrossEntropy) \
                 and self.criterion.do_offset == False:
                 # this is for the case where we want to get full output

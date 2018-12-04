@@ -135,6 +135,7 @@ class BitCenterOptim(SGD):
                     buf.add_(grad_offset.cuda())
                 else:
                     buf.add_(grad_offset)
+                # print("bc grad ", p_name, torch.sum(buf.type(torch.FloatTensor)**2).item())
                 p.data.add_(-buf)
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 

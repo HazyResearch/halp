@@ -10,6 +10,9 @@ logger = logging.getLogger('')
 DOUBLE_PREC_DEBUG = False
 DOUBLE_PREC_DEBUG_EPOCH_LEN = 3
 
+LP_DEBUG = True
+LP_DEBUG_EPOCH_LEN = 3
+
 
 def single_to_half_det(tensor):
     return tensor.half()
