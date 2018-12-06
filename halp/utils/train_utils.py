@@ -47,9 +47,10 @@ def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
             # in bc optimizer momentum includes lr as a factor already,
             # while normal sgd optimizer does not.
             ref_state_dict[ref_name]["momentum_buffer"].mul_(lr_after_ckpt)
+            dtype = param.dtype
             optimizer.state[param] = ref_state_dict[ref_name]
             optimizer.state[param]["momentum_buffer"] = model.cast_func(
-                optimizer.state[param]["momentum_buffer"])
+                optimizer.state[param]["momentum_buffer"]).type(dtype)
             load_cnt += 1
             logger.info("opt param state loaded for " + name)
     else:
@@ -57,9 +58,10 @@ def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
             ref_name = name
             if ref_name not in ref_state_dict.keys():
                 continue
+            dtype = param.dtype
             optimizer.state[param] = ref_state_dict[ref_name]
             optimizer.state[param]["momentum_buffer"] = model.cast_func(
-                optimizer.state[param]["momentum_buffer"])
+                optimizer.state[param]["momentum_buffer"]).type(dtype)
             load_cnt += 1
             logger.info("opt param state loaded for " + name)
     logger.info("loaded opt param state for " + str(load_cnt) + " params.")
