@@ -9,8 +9,8 @@ from halp.optim.svrg import SVRG
 from halp.utils.utils import get_recur_attr
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
-from halp.utils.utils import DOUBLE_PREC_DEBUG
 from copy import deepcopy
+from halp.models.resnet import ResNet
 
 
 # this function can load a normal model to a bc model
@@ -166,11 +166,10 @@ def get_grad_norm(optimizer, model):
                     norm += torch.sum((p.grad.data.type(torch.FloatTensor) \
                                       + weight_decay * p.data.type(torch.FloatTensor))
                                       **2).item()
-                    # print("non bc grad ", torch.sum(p.grad.data.type(torch.FloatTensor)**2)*lr**2)
     return math.sqrt(norm)
 
 
-def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
+def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp", args=None):
     model.eval()
     correct_cnt = 0
     sample_cnt = 0
@@ -182,7 +181,7 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
             X = model.cast_func(X)
         # if len(list(X.size())) != 2:
         #     X = X.view(X.size(0), -1)
-        if DOUBLE_PREC_DEBUG:
+        if args.double_debug:
             X = X.double()
         # if model.fine_tune:
         #     X = model.cast_func(X)
@@ -208,7 +207,8 @@ def train_non_bit_center_optimizer(model,
                                    n_epochs,
                                    eval_func=evaluate_acc,
                                    use_cuda=True,
-                                   dtype='fp'):
+                                   dtype='fp',
+                                   args=None):
     train_loss_list = []
     eval_metric_list = []
 
@@ -231,7 +231,7 @@ def train_non_bit_center_optimizer(model,
             if dtype == "bc":
                 raise Exception("This function can only run non-bc optimizers")
             optimizer.zero_grad()
-            if DOUBLE_PREC_DEBUG:
+            if args.double_debug:
                 X = X.double()
             train_loss = model(X, Y)
             train_pred = model.output.data.cpu().numpy().argmax(axis=1)
@@ -250,12 +250,13 @@ def train_non_bit_center_optimizer(model,
                     if dtype == "bc":
                         raise Exception(
                             "This function can only run non-bc optimizers")
-                    if DOUBLE_PREC_DEBUG:
+                    if args.double_debug:
                         data = data.double()
-
-                    # print("in closure", torch.sum(data.type(torch.FloatTensor)**2).item(), torch.sum(target.type(torch.FloatTensor)**2).item())
-
+                    if isinstance(model, ResNet):
+                        model.fix_running_stat()
                     loss = model(data, target)
+                    if isinstance(model, ResNet):
+                        model.free_running_stat()
                     loss.backward()
                     return loss
 
@@ -275,7 +276,7 @@ def train_non_bit_center_optimizer(model,
                         str(0.5 * model.reg_lambda * param_norm))
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()
-        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype))
+        eval_metric_list.append(eval_func(model, val_loader, use_cuda, dtype, args))
     return train_loss_list, eval_metric_list
 
 
@@ -286,7 +287,8 @@ def train_bit_center_optimizer(model,
                                n_epochs,
                                eval_func=evaluate_acc,
                                use_cuda=True,
-                               dtype="bc"):
+                               dtype="bc",
+                               args=None):
     train_loss_list = []
     eval_metric_list = []
     T = optimizer.T
@@ -307,7 +309,7 @@ def train_bit_center_optimizer(model,
                     optimizer.zero_grad()
                     if use_cuda:
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
-                    if DOUBLE_PREC_DEBUG:
+                    if args.double_debug:
                         X_fp = X_fp.double()
                     # if model.fine_tune:
                     #     X_fp = model.cast_func(X_fp)
@@ -329,7 +331,7 @@ def train_bit_center_optimizer(model,
                     "This training function does not support dtype other than bc"
                 )
             optimizer.zero_grad()
-            if DOUBLE_PREC_DEBUG:
+            if args.double_debug:
                 X = X.double()
             train_loss = model(X, Y)
             train_pred = model.output.data.cpu().numpy().argmax(axis=1)
@@ -355,6 +357,6 @@ def train_bit_center_optimizer(model,
         model.eval()
         optimizer.on_start_fp_steps(model)
         eval_metric_list.append(
-            eval_func(model, val_loader, use_cuda, dtype=dtype))
+            eval_func(model, val_loader, use_cuda, dtype=dtype, args=args))
         optimizer.on_end_fp_steps(model)
     return train_loss_list, eval_metric_list

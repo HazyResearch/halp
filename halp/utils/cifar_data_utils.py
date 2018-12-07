@@ -2,11 +2,13 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import numpy as np
-from halp.utils.utils import DOUBLE_PREC_DEBUG, DOUBLE_PREC_DEBUG_EPOCH_LEN
-from halp.utils.utils import LP_DEBUG, LP_DEBUG_EPOCH_LEN
+from halp.utils.utils import LP_DEBUG_EPOCH_LEN, DOUBLE_PREC_DEBUG_EPOCH_LEN
 
-def get_cifar10_data_loader(batch_size=128):
+
+def get_cifar10_data_loader(batch_size=128, args=None):
 	print('==> Preparing data..')
+	LP_DEBUG = args.float_debug
+	DOUBLE_PREC_DEBUG = args.double_debug
 	# transform_train = transforms.Compose([
 	#     transforms.RandomCrop(32, padding=4),
 	#     transforms.RandomHorizontalFlip(),

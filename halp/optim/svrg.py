@@ -3,6 +3,7 @@ import torch
 from torch.autograd import Variable
 import copy, logging
 
+
 class SVRG(torch.optim.SGD):
     """Implements stochastic variance reduction gradient descent.
     Args:

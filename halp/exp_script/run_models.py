@@ -7,6 +7,7 @@ torch.backends.cudnn.deterministic=True
 import torch.nn as nn
 import torch.utils.data
 from torch.optim import SGD
+import halp
 from halp.optim.bit_center_sgd import BitCenterSGD
 from halp.optim.bit_center_svrg import BitCenterSVRG
 from halp.optim.svrg import SVRG
@@ -24,14 +25,13 @@ from halp.utils.train_utils import train_bit_center_optimizer
 from halp.utils.train_utils import StepLRScheduler, ModelSaver
 from halp.utils.train_utils import load_param_to_model, load_state_to_optimizer
 from halp.utils.mnist_data_utils import get_mnist_data_loader
+from halp.utils.utils import DOUBLE_PREC_DEBUG_EPOCH_LEN
+from halp.utils.utils import LP_DEBUG_EPOCH_LEN
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 import time
-# the following is for setting up double precision based debugging
-from halp.utils.utils import DOUBLE_PREC_DEBUG, DOUBLE_PREC_DEBUG_EPOCH_LEN
-from halp.utils.utils import LP_DEBUG, LP_DEBUG_EPOCH_LEN
 
 
 parser = argparse.ArgumentParser()
@@ -87,15 +87,24 @@ parser.add_argument("--resnet-load-ckpt-epoch-id", type=int, default=0,
                     help="warm start using a checkpoint saved at this epoch id")
 parser.add_argument("--resnet-fine-tune", action="store_true",
                     help="fine tune the last linear layer of resnet")
+parser.add_argument("--float-debug", action="store_true",
+                    help="using single precision to do debug and test")
+parser.add_argument("--double-debug", action="store_true",
+                    help="using double precision to do debug and test")
 args = parser.parse_args()
 utils.set_seed(args.seed)
+
+# set test and debug flag
+assert not (args.float_debug and args.double_debug)
+LP_DEBUG = args.float_debug
+DOUBLE_PREC_DEBUG = args.double_debug
 
 if args.dataset == "mnist":
     train_loader, val_loader, input_shape, n_train_sample = get_mnist_data_loader(
         onehot=False, debug_test=args.debug_test, batch_size=args.batch_size)
 elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
-        batch_size=args.batch_size)
+        batch_size=args.batch_size, args=args)
 
 # TODO consider remove debug test flag not all the numerical test are done 
 # via DOUBLE_PREC_DEBUG flag
@@ -274,7 +283,8 @@ if (args.solver == "bc-sgd") or (args.solver == "bc-svrg"):
         val_loader=val_loader,
         n_epochs=args.n_epochs,
         use_cuda=args.cuda,
-        dtype=args.dtype)
+        dtype=args.dtype,
+        args=args)
 else:
     train_loss = train_non_bit_center_optimizer(
         model=model,
@@ -283,7 +293,8 @@ else:
         val_loader=val_loader,
         n_epochs=args.n_epochs,
         use_cuda=args.cuda,
-        dtype=args.dtype)
+        dtype=args.dtype,
+        args=args)
 end_time = time.time()
 print("Elapsed training time: ", end_time - start_time)
 

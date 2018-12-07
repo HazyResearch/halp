@@ -48,7 +48,7 @@ class BasicBlock(nn.Module):
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
-        out = F.relu(out)
+        out = F.relu(out)      
         return out
 
 
@@ -146,7 +146,7 @@ class BitCenterBasicBlock(BitCenterModule):
                     cast_func=cast_func,
                     n_train_sample=n_train_sample))
 
-    def forward(self, x):
+    def forward(self, x): 
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu1(out)
@@ -256,6 +256,7 @@ class ResNet(BitCenterModule):
                     for module_name, child in self.named_children():
                         if module_name not in ["linear.", "criterion."]:
                             child.half()
+                    # turn off gradient for the rest of the models
                     for name, param in self.named_parameters():
                         if not (name.startswith("linear.") or name.startswith("criterion.")):
                             param.requires_grad = False
@@ -276,6 +277,44 @@ class ResNet(BitCenterModule):
         else:
             raise Exception(dtype + " is not supported in LeNet!")
 
+
+    def setup_swap_bn_running_stat_swap(self):
+        self.running_stat = {}
+        self.running_stat_swap = {}
+        for name, param in self.state_dict().items():
+            if (".running_mean" in name) or (".running_var" in name):
+                assert param.requires_grad == False
+                self.running_stat[name] = param.data
+                # as the value of the swap does not matter, we set the to 1.
+                self.running_stat_swap[name] = torch.ones_like(param)
+                assert self.running_stat[name].data_ptr() != self.running_stat_swap[name].data_ptr()
+
+    def set_running_stat_param(self, stat_dict):
+        for name, param in self.state_dict().items():
+            if (".running_mean" in name) or (".running_var" in name):
+                assert param.requires_grad == False
+                stat = get_recur_attr(self, name.split("."))
+                if stat.is_cuda:
+                    stat.data = stat_dict[name].type(stat.dtype).cuda()
+                else:
+                    stat.data = stat_dict[name].type(stat.dtype).cpu()
+
+    def fix_running_stat(self):
+        # protect the running stat from being updated for multiple 
+        # times in each iterations. This is because the SVRG optimizer
+        # call closure for 3 times, each can update the running statistics
+        # this is only used for lp anf fp model, not for bc model
+        assert self.dtype != "bc"
+        # as the running stat memory is changing all the time,
+        # every time we swap on dummy stat, we need to save
+        # the original stat
+        self.setup_swap_bn_running_stat_swap()
+        self.set_running_stat_param(self.running_stat_swap)
+
+    def free_running_stat(self):
+        assert self.dtype != "bc"
+        self.set_running_stat_param(self.running_stat)
+
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
@@ -290,7 +329,7 @@ class ResNet(BitCenterModule):
         if self.fine_tune:
             # sync the input type with the layer param type
             x = x.type(self.conv1.weight.dtype)
-        # print("ckpt 0 ", torch.sum(x**2).item())
+        # print("ckpt 0 ", torch.sum(x**2).item(), torch.sum(self.conv1.weight**2).item(), torch.sum(self.bn1.running_mean**2).item())
         out = self.relu1(self.bn1(self.conv1(x)))
         # print("ckpt 1 ", torch.sum(out**2).item())
         out = self.layer1(out)
@@ -313,10 +352,8 @@ class ResNet(BitCenterModule):
             if self.dtype == "bc" and self.do_offset == False:
                 out = torch.zeros_like(out)
                 out = self.cast_func(out)
-                # print("lp input 1 ", torch.sum(out.type(torch.FloatTensor)**2).item())
             else:
                 out = out.type(self.linear.weight.dtype)
-                # print("fp input 1 ", torch.sum(out.type(torch.FloatTensor)**2).item())
 
         out = self.linear(out)
         # print("ckpt 8 ", torch.sum(out**2).item())

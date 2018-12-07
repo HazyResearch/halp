@@ -9,7 +9,7 @@ from unittest import TestCase
 
 class LeNetTest(TestCase):
 
-    def test_logistic_regression_grad():
+    def test_logistic_regression_grad(self):
         n_sample = 4
         n_dim = 3
         n_class = 4
