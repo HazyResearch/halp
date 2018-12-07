@@ -85,6 +85,8 @@ parser.add_argument("--resnet-load-ckpt", action="store_true",
                     help="load check points for resnet18")
 parser.add_argument("--resnet-load-ckpt-epoch-id", type=int, default=0,
                     help="warm start using a checkpoint saved at this epoch id")
+parser.add_argument("--resnet-fine-tune", action="store_true",
+                    help="fine tune the last linear layer of resnet")
 args = parser.parse_args()
 utils.set_seed(args.seed)
 
@@ -149,7 +151,8 @@ elif args.model == "resnet":
         reg_lambda=args.reg,
         cast_func=args.cast_func,
         n_train_sample=n_train_sample,
-        dtype=args.dtype)
+        dtype=args.dtype,
+        fine_tune=args.resnet_fine_tune)
 else:
     raise Exception(args.model + " is currently not supported!")
 
@@ -162,8 +165,18 @@ if DOUBLE_PREC_DEBUG:
     model.double()
 
 # setup optimizer
-params_name = [x for x, y in model.named_parameters()]
-params = [y for x, y in model.named_parameters()]
+if args.resnet_fine_tune:
+    if args.model != "resnet":
+        raise Exception("currently only resnet model support fine-tune mode")
+    params_name = []
+    params = []
+    for x, y in model.named_parameters():
+        if x.startswith("linear") or x.startswith("criterion"):
+            params_name.append(x)
+            params.append(y)
+else:
+    params_name = [x for x, y in model.named_parameters()]
+    params = [y for x, y in model.named_parameters()]
 
 logger.info("Params list: ")
 for name, p in zip(params_name, params):

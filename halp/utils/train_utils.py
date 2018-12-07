@@ -304,6 +304,8 @@ def train_bit_center_optimizer(model,
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
                     if DOUBLE_PREC_DEBUG:
                         X_fp = X_fp.double()
+                    if model.fine_tune:
+                        X_fp = model.cast_func(X_fp)
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()

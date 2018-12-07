@@ -164,12 +164,14 @@ class ResNet(BitCenterModule):
                  num_classes=10,
                  reg_lambda=0.0,
                  dtype="bc",
+                 fine_tune=False,
                  cast_func=void_cast_func,
                  n_train_sample=1):
         super(ResNet, self).__init__()
         self.in_planes = 64
         self.reg_lambda = reg_lambda
         self.dtype = dtype
+        self.fine_tune = fine_tune
         self.cast_func = cast_func
         self.n_train_sample = n_train_sample
 
@@ -209,47 +211,9 @@ class ResNet(BitCenterModule):
         self.criterion = BitCenterCrossEntropy(
             cast_func=cast_func, n_train_sample=n_train_sample)
 
-        # self.in_planes = int(64 / 4)
-        # self.conv1 = BitCenterConv2D(
-        #     3,
-        #     int(64 / 4),
-        #     kernel_size=(3, 3),
-        #     stride=1,
-        #     padding=1,
-        #     bias=False,
-        #     cast_func=cast_func,
-        #     n_train_sample=n_train_sample)
-
-        # self.bn1 = BitCenterBatchNorm2D(
-        #     int(64 / 4), cast_func=cast_func, n_train_sample=n_train_sample)
-
-        # self.relu1 = BitCenterReLU(
-        #     cast_func=cast_func, n_train_sample=n_train_sample)
-
-
-        # self.layer1 = self._make_layer(block, int(64 / 4), num_blocks[0], stride=1)
-        # self.layer2 = self._make_layer(block, int(128 / 4), num_blocks[1], stride=2)
-        # self.layer3 = self._make_layer(block, int(256 / 4), num_blocks[2], stride=2)
-        # self.layer4 = self._make_layer(block, int(512 / 4), num_blocks[3], stride=2)
-
-        # self.avg_pool = BitCenterAvgPool2D(
-        #     kernel_size=(4, 4),
-        #     cast_func=cast_func,
-        #     n_train_sample=n_train_sample)
-
-        # self.linear = BitCenterLinear(
-        #     int(512/4) * block.expansion,
-        #     num_classes,
-        #     bias=True,
-        #     cast_func=cast_func,
-        #     n_train_sample=n_train_sample)
-
-        # self.criterion = BitCenterCrossEntropy(
-        #     cast_func=cast_func, n_train_sample=n_train_sample)
-
-        if dtype == "bc":
+        if dtype == "bc" and not self.fine_tune:
             pass
-        elif (dtype == "fp") or (dtype == "lp"):
+        elif (dtype == "fp") or (dtype == "lp") or (self.fine_tune):
             # for fp and lp models, we use the origianl pytorch modules
             # reset initial inplanes
             self.in_planes = 64
@@ -284,59 +248,26 @@ class ResNet(BitCenterModule):
 
             self.avg_pool = copy_module_weights(
                 self.avg_pool, nn.AvgPool2d(kernel_size=(4, 4)))
-            self.linear = copy_module_weights(
-                self.linear, nn.Linear(512 * BasicBlock.expansion,
-                                       num_classes))
 
-            self.criterion = copy_module_weights(
-                self.criterion, nn.CrossEntropyLoss(size_average=True))
+            if self.fine_tune:
+                if self.cast_func == void_cast_func:
+                    pass
+                else:
+                    for module_name, child in self.named_children():
+                        if module_name not in ["linear", "criterion"]:
+                            child.half()
+            elif dtype == "lp":
+                self.linear = copy_module_weights(
+                    self.linear, nn.Linear(512 * BasicBlock.expansion,
+                                           num_classes))
+                self.criterion = copy_module_weights(
+                    self.criterion, nn.CrossEntropyLoss(size_average=True))
 
-
-            # self.in_planes = int(64 / 4)
-            # self.conv1 = copy_module_weights(
-            #     self.conv1,
-            #     nn.Conv2d(
-            #         3,
-            #         self.in_planes,
-            #         kernel_size=3,
-            #         stride=1,
-            #         padding=1,
-            #         bias=False))
-            # self.bn1 = copy_module_weights(self.bn1, nn.BatchNorm2d(int(64/4)))
-            # self.relu1 = copy_module_weights(self.relu1, nn.ReLU())
-
-            # self.layer1 = copy_module_weights(
-            #     self.layer1,
-            #     ResNet_PyTorch._make_layer(
-            #         self, BasicBlock, int(64/4), num_blocks[0], stride=1))
-            # self.layer2 = copy_module_weights(
-            #     self.layer2,
-            #     ResNet_PyTorch._make_layer(
-            #         self, BasicBlock, int(128/4), num_blocks[1], stride=2))
-            # self.layer3 = copy_module_weights(
-            #     self.layer3,
-            #     ResNet_PyTorch._make_layer(
-            #         self, BasicBlock, int(256/4), num_blocks[2], stride=2))
-            # self.layer4 = copy_module_weights(
-            #     self.layer4,
-            #     ResNet_PyTorch._make_layer(
-            #         self, BasicBlock, int(512/4), num_blocks[3], stride=2))
-
-            # self.avg_pool = copy_module_weights(
-            #     self.avg_pool, nn.AvgPool2d(kernel_size=(4, 4)))
-            # self.linear = copy_module_weights(
-            #     self.linear, nn.Linear(int(512/4) * BasicBlock.expansion,
-            #                            num_classes))
-
-            # self.criterion = copy_module_weights(
-            #     self.criterion, nn.CrossEntropyLoss(size_average=True))
-
-            if dtype == "lp":
                 if self.cast_func == void_cast_func:
                     pass
                 else:
                     for child in self.children():
-                        child.half()
+                        child.half()            
         else:
             raise Exception(dtype + " is not supported in LeNet!")
 
@@ -366,6 +297,17 @@ class ResNet(BitCenterModule):
         # print("ckpt 6 ", torch.sum(out**2).item())
         out = out.view(out.size(0), -1)
         # print("ckpt 7 ", torch.sum(out**2).item())
+
+        # if in fine tune lp step mode, the delta are always
+        # 0 as the lower layers output are fixed, as a consequence
+        # of the lower layers being fixed.
+        if self.fine_tune:
+            if self.do_offset == False:
+                out = torch.zeros_like(out)
+                out = self.cast_func(out)
+            else:
+                out = out.type(self.linear.weight.dtype)
+
         out = self.linear(out)
         # print("ckpt 8 ", torch.sum(out**2).item())
         self.output = out
@@ -387,10 +329,11 @@ class ResNet(BitCenterModule):
         return pred, output
 
 
-def ResNet18(reg_lambda, cast_func, n_train_sample, dtype):
+def ResNet18(reg_lambda, cast_func, n_train_sample, dtype, fine_tune):
     return ResNet(
         BitCenterBasicBlock, [2, 2, 2, 2],
         reg_lambda=reg_lambda,
         cast_func=cast_func,
         n_train_sample=n_train_sample,
-        dtype=dtype)
+        dtype=dtype, 
+        fine_tune=fine_tune)
