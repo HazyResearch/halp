@@ -254,20 +254,25 @@ class ResNet(BitCenterModule):
                     pass
                 else:
                     for module_name, child in self.named_children():
-                        if module_name not in ["linear", "criterion"]:
+                        if module_name not in ["linear.", "criterion."]:
                             child.half()
-            elif dtype == "lp":
+                    for name, param in self.named_parameters():
+                        if not (name.startswith("linear.") or name.startswith("criterion.")):
+                            param.requires_grad = False
+                            print("inside ", param.requires_grad, name)
+            if dtype != "bc":
                 self.linear = copy_module_weights(
                     self.linear, nn.Linear(512 * BasicBlock.expansion,
                                            num_classes))
                 self.criterion = copy_module_weights(
                     self.criterion, nn.CrossEntropyLoss(size_average=True))
 
-                if self.cast_func == void_cast_func:
-                    pass
-                else:
-                    for child in self.children():
-                        child.half()            
+                if dtype == "lp":
+                    if self.cast_func == void_cast_func:
+                        pass
+                    else:
+                        for child in self.children():
+                            child.half()            
         else:
             raise Exception(dtype + " is not supported in LeNet!")
 
@@ -282,6 +287,9 @@ class ResNet(BitCenterModule):
         return BitCenterSequential(*layers)
 
     def forward(self, x, y, test=False):
+        if self.fine_tune:
+            # sync the input type with the layer param type
+            x = x.type(self.conv1.weight.dtype)
         # print("ckpt 0 ", torch.sum(x**2).item())
         out = self.relu1(self.bn1(self.conv1(x)))
         # print("ckpt 1 ", torch.sum(out**2).item())
@@ -302,11 +310,13 @@ class ResNet(BitCenterModule):
         # 0 as the lower layers output are fixed, as a consequence
         # of the lower layers being fixed.
         if self.fine_tune:
-            if self.do_offset == False:
+            if self.dtype == "bc" and self.do_offset == False:
                 out = torch.zeros_like(out)
                 out = self.cast_func(out)
+                # print("lp input 1 ", torch.sum(out.type(torch.FloatTensor)**2).item())
             else:
                 out = out.type(self.linear.weight.dtype)
+                # print("fp input 1 ", torch.sum(out.type(torch.FloatTensor)**2).item())
 
         out = self.linear(out)
         # print("ckpt 8 ", torch.sum(out**2).item())

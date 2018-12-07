@@ -184,6 +184,8 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp"):
         #     X = X.view(X.size(0), -1)
         if DOUBLE_PREC_DEBUG:
             X = X.double()
+        # if model.fine_tune:
+        #     X = model.cast_func(X)
         pred, output = model.predict(X)
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
@@ -250,6 +252,9 @@ def train_non_bit_center_optimizer(model,
                             "This function can only run non-bc optimizers")
                     if DOUBLE_PREC_DEBUG:
                         data = data.double()
+
+                    # print("in closure", torch.sum(data.type(torch.FloatTensor)**2).item(), torch.sum(target.type(torch.FloatTensor)**2).item())
+
                     loss = model(data, target)
                     loss.backward()
                     return loss
@@ -304,8 +309,8 @@ def train_bit_center_optimizer(model,
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
                     if DOUBLE_PREC_DEBUG:
                         X_fp = X_fp.double()
-                    if model.fine_tune:
-                        X_fp = model.cast_func(X_fp)
+                    # if model.fine_tune:
+                    #     X_fp = model.cast_func(X_fp)
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
