@@ -27,7 +27,8 @@ def run_experiment(exp_name,
                    resnet_save_ckpt=False,
                    resnet_load_ckpt=False,
                    resnet_load_ckpt_epoch_id=0,
-                   ckpt_path="./test/"):
+                   ckpt_path="./test/",
+                   resnet_fine_tune=False):
     template = "python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py " \
                + "--n-epochs=unk " \
                + "--batch-size=unk " \
@@ -42,6 +43,10 @@ def run_experiment(exp_name,
                + " --dataset=unk " \
                + " --model=unk " \
                + " --cuda "
+    if resnet_fine_tune:
+      assert model == "resnet"
+      template += " --resnet-fine-tune"
+
     # data_path = "/dfs/scratch0/zjian/float_halp/data/" + experiment_name
     opt = "sgd"
     epoch = 300
