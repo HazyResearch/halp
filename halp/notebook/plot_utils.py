@@ -27,7 +27,7 @@ def save_csv_only_y(data_list, file_name="./test/test.xlsx", ave_x=False):
 
 def plot_best_config_multiple_epochs(ckpt_epochs, total_epoch=100, win_width=1000, top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/", epoch_len=391):
     pattern_list_array = [ ["_bc-svrg"], ["_lp-svrg"], ["_svrg"], ["_bc-sgd"], ["_lp-sgd"], ["_sgd"]]
-    plot_label_list = ["halp", "fp16 lp-svrg", "fp32 svrg", "fp16 bc-sgd", "fp16 lp-sgd", "fp32 sgd"]
+    plot_label_list = ["halp", "svrg (16)", "svrg (32)", "bc-sgd (16)", "sgd (16)", "sgd (32)"]
 #     pattern_list_array = [ ["_bc-svrg"], ["_lp-svrg"]]
 #     plot_label_list = ["halp", "fp16 lp-svrg"]
 #     top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/"
@@ -63,7 +63,7 @@ def plot_best_config_multiple_epochs(ckpt_epochs, total_epoch=100, win_width=100
 
 def plot_best_config_fixed_epochs(cut_off_epoch=100, total_epoch=100, win_width=1000, top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/", epoch_len=391):
     pattern_list_array = [ ["_bc-svrg"], ["_lp-svrg"], ["_svrg"], ["_bc-sgd"], ["_lp-sgd"], ["_sgd"]]
-    plot_label_list = ["halp", "fp16 lp-svrg", "fp32 svrg", "fp16 bc-sgd", "fp16 lp-sgd", "fp32 sgd"]
+    plot_label_list = ["halp", "svrg (16)", "svrg (32)", "bc-sgd (16)", "sgd (16)", "sgd (32)"]
 #     top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/"
     all_directories = get_immediate_subdirectories(top_directory)
     all_directories = get_subdirectories_patterns_without_seed(all_directories)
