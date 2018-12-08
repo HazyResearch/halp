@@ -252,10 +252,13 @@ def train_non_bit_center_optimizer(model,
                             "This function can only run non-bc optimizers")
                     if args.double_debug:
                         data = data.double()
-                    if isinstance(model, ResNet):
+                    if isinstance(model, ResNet) and (not args.resnet_fine_tune):
+                        # for fine tune situation, the batch norm layer
+                        # is protected by set to eval mode in the forward
+                        # function already.
                         model.fix_running_stat()
                     loss = model(data, target)
-                    if isinstance(model, ResNet):
+                    if isinstance(model, ResNet) and (not args.resnet_fine_tune):
                         model.free_running_stat()
                     loss.backward()
                     return loss

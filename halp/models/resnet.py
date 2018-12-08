@@ -15,7 +15,10 @@ from halp.layers.conv_layer import BitCenterConv2D
 from halp.layers.relu_layer import BitCenterReLU
 from halp.layers.pool_layer import BitCenterAvgPool2D
 from halp.layers.batch_norm_layer import BitCenterBatchNorm2D
-
+import sys
+import logging
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger = logging.getLogger('')
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -251,16 +254,16 @@ class ResNet(BitCenterModule):
 
             if self.fine_tune:
                 if self.cast_func == void_cast_func:
+                    # this branch is only for test purpose
                     pass
                 else:
                     for module_name, child in self.named_children():
                         if module_name not in ["linear.", "criterion."]:
                             child.half()
-                    # turn off gradient for the rest of the models
-                    for name, param in self.named_parameters():
-                        if not (name.startswith("linear.") or name.startswith("criterion.")):
-                            param.requires_grad = False
-                            print("inside ", param.requires_grad, name)
+                # turn off gradient for the rest of the models
+                for name, param in self.named_parameters():
+                    if not (name.startswith("linear.") or name.startswith("criterion.")):
+                        param.requires_grad = False
             if dtype != "bc":
                 self.linear = copy_module_weights(
                     self.linear, nn.Linear(512 * BasicBlock.expansion,
@@ -277,6 +280,8 @@ class ResNet(BitCenterModule):
         else:
             raise Exception(dtype + " is not supported in LeNet!")
 
+        for name, param in self.named_parameters():
+            logger.info("Resnet check requires grad " + name + " " + str(param.requires_grad))
 
     def setup_swap_bn_running_stat_swap(self):
         self.running_stat = {}
@@ -303,8 +308,10 @@ class ResNet(BitCenterModule):
         # protect the running stat from being updated for multiple 
         # times in each iterations. This is because the SVRG optimizer
         # call closure for 3 times, each can update the running statistics
-        # this is only used for lp anf fp model, not for bc model
-        assert self.dtype != "bc"
+        # this is only used for lp anf fp model, not for bc model.
+        # for the case of fine tuning, we don't use this function.
+        # We set to eval mode for training in the forward function
+        assert self.dtype != "bc" and not self.fine_tune
         # as the running stat memory is changing all the time,
         # every time we swap on dummy stat, we need to save
         # the original stat
@@ -312,7 +319,7 @@ class ResNet(BitCenterModule):
         self.set_running_stat_param(self.running_stat_swap)
 
     def free_running_stat(self):
-        assert self.dtype != "bc"
+        assert self.dtype != "bc" and not self.fine_tune
         self.set_running_stat_param(self.running_stat)
 
     def _make_layer(self, block, planes, num_blocks, stride):
@@ -325,10 +332,21 @@ class ResNet(BitCenterModule):
             self.in_planes = planes * block.expansion
         return BitCenterSequential(*layers)
 
+    def set_bn_mode(self, module, do_eval=True):
+        for name, child in module.named_children():
+            if not isinstance(child, nn.BatchNorm2d):
+                self.set_bn_mode(child, do_eval=do_eval)
+            else:
+                child.eval()
+                # print(name + " is set to bn eval model")
+
     def forward(self, x, y, test=False):
         if self.fine_tune:
             # sync the input type with the layer param type
             x = x.type(self.conv1.weight.dtype)
+            self.set_bn_mode(self, do_eval=True)
+
+
         # print("ckpt 0 ", torch.sum(x**2).item(), torch.sum(self.conv1.weight**2).item(), torch.sum(self.bn1.running_mean**2).item())
         out = self.relu1(self.bn1(self.conv1(x)))
         # print("ckpt 1 ", torch.sum(out**2).item())
@@ -343,7 +361,7 @@ class ResNet(BitCenterModule):
         out = self.avg_pool(out)
         # print("ckpt 6 ", torch.sum(out**2).item())
         out = out.view(out.size(0), -1)
-        # print("ckpt 7 ", torch.sum(out**2).item())
+        # print("ckpt 7 ", torch.sum(out.type(torch.FloatTensor)**2).item())
 
         # if in fine tune lp step mode, the delta are always
         # 0 as the lower layers output are fixed, as a consequence
@@ -354,6 +372,7 @@ class ResNet(BitCenterModule):
                 out = self.cast_func(out)
             else:
                 out = out.type(self.linear.weight.dtype)
+        # print("ckpt 7.5 ", torch.sum(out.type(torch.FloatTensor)**2).item())
 
         out = self.linear(out)
         # print("ckpt 8 ", torch.sum(out**2).item())
@@ -368,6 +387,7 @@ class ResNet(BitCenterModule):
                 # this is for the case where we want to get full output
                 # in the do_offset = False mode.
                 self.output = self.output + self.criterion.input_lp
+            # print("ckpt 9 ", torch.sum(out**2).item())
             return self.loss
 
     def predict(self, x):
