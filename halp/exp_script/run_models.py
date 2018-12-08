@@ -31,6 +31,7 @@ logger = logging.getLogger('')
 import time
 # the following is for setting up double precision based debugging
 from halp.utils.utils import DOUBLE_PREC_DEBUG, DOUBLE_PREC_DEBUG_EPOCH_LEN
+from halp.utils.utils import LP_DEBUG, LP_DEBUG_EPOCH_LEN
 
 
 parser = argparse.ArgumentParser()
@@ -112,6 +113,8 @@ else:
 if DOUBLE_PREC_DEBUG:
     assert args.cast_func == void_cast_func
     args.T = DOUBLE_PREC_DEBUG_EPOCH_LEN
+elif LP_DEBUG:
+    args.T = LP_DEBUG_EPOCH_LEN
 
 # TODO resolve this for trainin procedure and avoid this check
 print("dataset stats: n_batch, batch_size, T ", len(train_loader), args.batch_size, args.T)
