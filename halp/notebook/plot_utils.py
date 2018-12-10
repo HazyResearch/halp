@@ -61,10 +61,44 @@ def plot_best_config_multiple_epochs(ckpt_epochs, total_epoch=100, win_width=100
     return ckpt_epochs, best_train_loss_list, best_test_acc_list 
 
 
-def plot_best_config_fixed_epochs(cut_off_epoch=100, total_epoch=100, win_width=1000, top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/", epoch_len=391):
-    pattern_list_array = [ ["_bc-svrg"], ["_lp-svrg"], ["_svrg"], ["_bc-sgd"], ["_lp-sgd"], ["_sgd"]]
-    plot_label_list = ["halp", "svrg (16)", "svrg (32)", "bc-sgd (16)", "sgd (16)", "sgd (32)"]
-#     top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/"
+# def plot_best_config_fixed_epochs(cut_off_epoch=100, total_epoch=100, win_width=1000, top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/", epoch_len=391):
+#     pattern_list_array = [ ["_bc-svrg"], ["_lp-svrg"], ["_svrg"], ["_bc-sgd"], ["_lp-sgd"], ["_sgd"]]
+#     plot_label_list = ["halp", "svrg (16)", "svrg (32)", "bc-sgd (16)", "sgd (16)", "sgd (32)"]
+# #     top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/"
+#     all_directories = get_immediate_subdirectories(top_directory)
+#     all_directories = get_subdirectories_patterns_without_seed(all_directories)
+
+#     best_train_loss_list = []
+#     best_test_acc_list = []
+#     best_train_loss_config_list = []
+#     best_test_acc_config_list = []
+#     for pattern_list in pattern_list_array:
+#         print("\n")
+#         print(pattern_list)
+#         dir_list = filter_directory_names(all_directories, pattern_list)
+#         res = get_config_with_best_test_acc(top_directory, dir_list, cut_off_epoch=cut_off_epoch, total_epoch=total_epoch)
+#         best_test_acc_list.append(res[0])
+#         best_test_acc_config_list.append(res[1])
+#         res = get_config_with_best_train_loss(top_directory, dir_list, win_width=win_width, cut_off_epoch=cut_off_epoch, total_epoch=total_epoch, epoch_len=epoch_len)
+#         best_train_loss_list.append(res[0])
+#         best_train_loss_config_list.append(res[1])
+
+#     plot_test_acc(pattern_list_array, best_test_acc_list)
+#     plot_train_loss(pattern_list_array, best_train_loss_list)
+#     return best_test_acc_list, best_train_loss_list, plot_label_list
+
+def plot_best_config_fixed_epochs(cut_off_epoch=100, total_epoch=100, 
+                                  win_width=1000, 
+                                  top_directory = "/dfs/scratch0/zjian/floating_halp/exp_res/lenet_hyper_sweep_2018_nov_17/", 
+                                  epoch_len=391,
+                                  seed_list=[1, 2, 3], 
+                                  pattern_list_array=[ ["_bc-svrg",], 
+                                                      ["_lp-svrg",],
+                                                      ["_svrg",],
+                                                      ["_bc-sgd",],
+                                                      ["_lp-sgd",],
+                                                      ["_sgd",]],
+                                  plot_label_list=["halp", "svrg (16)", "svrg (32)", "bc-sgd (16)", "sgd (16)", "sgd (32)"]):
     all_directories = get_immediate_subdirectories(top_directory)
     all_directories = get_subdirectories_patterns_without_seed(all_directories)
 
@@ -76,10 +110,10 @@ def plot_best_config_fixed_epochs(cut_off_epoch=100, total_epoch=100, win_width=
         print("\n")
         print(pattern_list)
         dir_list = filter_directory_names(all_directories, pattern_list)
-        res = get_config_with_best_test_acc(top_directory, dir_list, cut_off_epoch=cut_off_epoch, total_epoch=total_epoch)
+        res = get_config_with_best_test_acc(top_directory, dir_list, cut_off_epoch=cut_off_epoch, total_epoch=total_epoch, seed_list=seed_list)
         best_test_acc_list.append(res[0])
         best_test_acc_config_list.append(res[1])
-        res = get_config_with_best_train_loss(top_directory, dir_list, win_width=win_width, cut_off_epoch=cut_off_epoch, total_epoch=total_epoch, epoch_len=epoch_len)
+        res = get_config_with_best_train_loss(top_directory, dir_list, win_width=win_width, cut_off_epoch=cut_off_epoch, total_epoch=total_epoch, epoch_len=epoch_len, seed_list=seed_list)
         best_train_loss_list.append(res[0])
         best_train_loss_config_list.append(res[1])
 

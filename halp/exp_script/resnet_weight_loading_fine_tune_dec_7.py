@@ -22,7 +22,7 @@ if __name__ == "__main__":
     dataset = "cifar10"
     model = "resnet"
     # run_option = "dryrun"
-    run_option = "dryrun"
+    run_option = "run"
 
 
     opt_algo_list = ["bc-svrg", "lp-svrg", "bc-sgd", "lp-sgd"]    
@@ -41,8 +41,8 @@ if __name__ == "__main__":
         T_list,
         dataset,
         model,
-        cluster="dawn",
-        # cluster="starcluster",
+        #cluster="dawn",
+        cluster="starcluster",
         run_option=run_option,
         resnet_load_ckpt=True,
         # resnet_load_ckpt_epoch_id=325,
@@ -67,8 +67,8 @@ if __name__ == "__main__":
         T_list,
         dataset,
         model,
-        cluster="dawn",
-        # cluster="starcluster",
+        #cluster="dawn",
+        cluster="starcluster",
         run_option=run_option,
         resnet_load_ckpt=True,
         # resnet_load_ckpt_epoch_id=325,
