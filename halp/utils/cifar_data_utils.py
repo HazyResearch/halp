@@ -3,7 +3,36 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 from halp.utils.utils import LP_DEBUG_EPOCH_LEN, DOUBLE_PREC_DEBUG_EPOCH_LEN
+import sys
+import logging
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logger = logging.getLogger('')
 
+
+def get_partial_classes(dataset, train=True, test_func=lambda x: x % 2 == 0, label_transform=lambda x: x // 2):
+	if train:
+		labels_all_classes = dataset.train_labels
+	else:
+		labels_all_classes = dataset.test_labels
+	idx_labels = [(i, label) for i, label in enumerate(labels_all_classes) if test_func(label)]
+	idx, labels = zip(*idx_labels)
+	if train:
+		dataset.train_data = dataset.train_data[idx, :, :, :]
+		dataset.train_labels = labels
+		old_label = list(dataset.train_labels).copy()
+		dataset.train_labels = [label_transform(x) for x in dataset.train_labels]
+		new_label = dataset.train_labels.copy()
+	else:
+		dataset.test_data = dataset.test_data[idx, :, :, :]
+		dataset.test_labels = labels
+		old_label = list(dataset.test_labels).copy()
+		dataset.test_labels = [label_transform(x) for x in dataset.test_labels]
+		new_label = dataset.test_labels.copy()
+
+	logger.info("n samples after sample even classes: " + str(len(new_label)))
+	logger.info("label classes before even classes extraction" + np.array2string(np.unique(old_label)))
+	logger.info("label classes after even classes extraction" + np.array2string(np.unique(new_label)))
+	return dataset
 
 def get_cifar10_data_loader(batch_size=128, args=None):
 	print('==> Preparing data..')
@@ -41,13 +70,38 @@ def get_cifar10_data_loader(batch_size=128, args=None):
 		trainset = torch.utils.data.Subset(trainset, np.arange(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN))
 	elif LP_DEBUG:
 		trainset = torch.utils.data.Subset(trainset, np.arange(batch_size * LP_DEBUG_EPOCH_LEN))
+	if args.only_even_class:
+		get_partial_classes(trainset, 
+							train=True, 
+							test_func=lambda x: x % 2 == 0, 
+							label_transform=lambda x: x // 2)
+		args.n_classes = (args.n_classes + 1) // 2
+		logger.info("Data stat after extracting even classes: n_class=" + str(args.n_classes))
+	elif args.only_odd_class:
+		get_partial_classes(trainset, 
+							train=True, 
+							test_func=lambda x: x % 2 == 1, 
+							label_transform=lambda x: (x - 1) // 2)
+		args.n_classes = (args.n_classes - 1) // 2
+		logger.info("Data stat after extracting odd classes: n_class=" + str(args.n_classes))
 	trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=1)
+	args.T = len(trainloader)
 
 	testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 	if DOUBLE_PREC_DEBUG:
 		testset = torch.utils.data.Subset(testset, np.arange(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN))
 	elif LP_DEBUG:
 		testset = torch.utils.data.Subset(testset, np.arange(batch_size * LP_DEBUG_EPOCH_LEN))
+	if args.only_even_class:
+		testset = get_partial_classes(testset, 
+							train=False, 
+							test_func=lambda x: x % 2 == 0, 
+							label_transform=lambda x: x // 2)
+	elif args.only_odd_class:
+		testset = get_partial_classes(testset, 
+							train=False, 
+							test_func=lambda x: x % 2 == 1, 
+							label_transform=lambda x: (x - 1) // 2)
 	testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=1)
 	
 	classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')

@@ -281,7 +281,7 @@ class ResNet(BitCenterModule):
             raise Exception(dtype + " is not supported in LeNet!")
 
         for name, param in self.named_parameters():
-            logger.info("Resnet check requires grad " + name + " " + str(param.requires_grad))
+            logger.info("Resnet check requires grad " + name + " " + str(param.requires_grad) + " " + str(param.size()))
 
     def setup_swap_bn_running_stat_swap(self):
         self.running_stat = {}
@@ -396,11 +396,12 @@ class ResNet(BitCenterModule):
         return pred, output
 
 
-def ResNet18(reg_lambda, cast_func, n_train_sample, dtype, fine_tune):
+def ResNet18(reg_lambda, cast_func, n_train_sample, dtype, fine_tune, num_classes=10):
     return ResNet(
         BitCenterBasicBlock, [2, 2, 2, 2],
         reg_lambda=reg_lambda,
         cast_func=cast_func,
         n_train_sample=n_train_sample,
         dtype=dtype, 
-        fine_tune=fine_tune)
+        fine_tune=fine_tune,
+        num_classes=num_classes)

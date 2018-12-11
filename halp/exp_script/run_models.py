@@ -91,6 +91,10 @@ parser.add_argument("--float-debug", action="store_true",
                     help="using single precision to do debug and test")
 parser.add_argument("--double-debug", action="store_true",
                     help="using double precision to do debug and test")
+parser.add_argument("--only-odd-class", action="store_true",
+                    help="using double precision to do debug and test")
+parser.add_argument("--only-even-class", action="store_true",
+                    help="using double precision to do debug and test")
 args = parser.parse_args()
 utils.set_seed(args.seed)
 
@@ -105,6 +109,7 @@ if args.dataset == "mnist":
 elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size, args=args)
+    assert (args.only_even_class == False) or (args.only_odd_class == False)
 
 # TODO consider remove debug test flag not all the numerical test are done 
 # via DOUBLE_PREC_DEBUG flag
@@ -161,7 +166,8 @@ elif args.model == "resnet":
         cast_func=args.cast_func,
         n_train_sample=n_train_sample,
         dtype=args.dtype,
-        fine_tune=args.resnet_fine_tune)
+        fine_tune=args.resnet_fine_tune,
+        num_classes=args.n_classes)
 else:
     raise Exception(args.model + " is currently not supported!")
 
