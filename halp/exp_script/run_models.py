@@ -262,8 +262,8 @@ if args.resnet_load_ckpt:
     opt_ckpt = args.resnet_save_ckpt_path + "/opt_e_" + str(args.resnet_load_ckpt_epoch_id) + "_i_0"    
     model_state_dict = torch.load(model_ckpt)
     opt_state_dict = torch.load(opt_ckpt)
-    load_param_to_model(model, model_state_dict, to_bc_model=("bc-" in args.solver))
-    load_state_to_optimizer(optimizer, model, opt_state_dict, to_bc_opt=("bc-" in args.solver))
+    load_param_to_model(model, model_state_dict, to_bc_model=("bc-" in args.solver), args=args)
+    load_state_to_optimizer(optimizer, model, opt_state_dict, to_bc_opt=("bc-" in args.solver), args=args)
     # optimizer.load_state_dict(opt_state_dict) 
     logger.info("model and optimizer loaded from " + model_ckpt)
 

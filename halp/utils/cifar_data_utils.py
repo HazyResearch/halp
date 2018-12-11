@@ -82,7 +82,7 @@ def get_cifar10_data_loader(batch_size=128, args=None):
 							train=True, 
 							test_func=lambda x: x % 2 == 1, 
 							label_transform=lambda x: (x - 1) // 2)
-		args.n_classes = (args.n_classes - 1) // 2
+		args.n_classes = args.n_classes // 2
 		logger.info("Data stat after extracting odd classes: n_class=" + str(args.n_classes))
 	trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=1)
 	args.T = len(trainloader)

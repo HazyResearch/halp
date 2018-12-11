@@ -51,9 +51,9 @@ def run_experiment(exp_name,
 
     assert (not only_even_class) or (not only_odd_class)
     if only_even_class:
-      template += "--only-even-class"
+      template += " --only-even-class"
     elif only_odd_class:
-      template += "--only-odd-class"
+      template += " --only-odd-class"
 
     # data_path = "/dfs/scratch0/zjian/float_halp/data/" + experiment_name
     opt = "sgd"

@@ -14,9 +14,12 @@ from halp.models.resnet import ResNet
 
 
 # this function can load a normal model to a bc model
-def load_param_to_model(model, state_dict, to_bc_model=False):
+def load_param_to_model(model, state_dict, to_bc_model=False, args=None):
     state_dict = deepcopy(state_dict)
     for name, ref_param in state_dict.items():
+        # half classes fine tune setting should not load linear layer
+        if (args.only_even_class or args.only_odd_class) and "linear." in name:
+            continue
         model_param = get_recur_attr(model, name.split("."))
         ref_param = state_dict[name]
         model_param.data.copy_(ref_param.data)
@@ -28,7 +31,7 @@ def load_param_to_model(model, state_dict, to_bc_model=False):
         logger.info("loaded model parameter " + name)
 
 # this is mostly for loading the momentum terms
-def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
+def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False, args=None):
     ref_state_dict = deepcopy(state_dict)
     opt_state_dict = optimizer.state_dict()
     assert len(optimizer.param_groups
@@ -42,6 +45,8 @@ def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
                 only_requires_grad=True):
             ref_name = name.split("_delta")[0]
             if ref_name not in ref_state_dict.keys():
+                continue
+            if (args.only_even_class or args.only_odd_class) and "linear." in name:
                 continue
             # note the definition of momentum in bc and normal sgd is different
             # in bc optimizer momentum includes lr as a factor already,
@@ -57,6 +62,8 @@ def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False):
         for name, param in model.named_parameters():
             ref_name = name
             if ref_name not in ref_state_dict.keys():
+                continue
+            if (args.only_even_class or args.only_odd_class) and "linear." in name:
                 continue
             dtype = param.dtype
             optimizer.state[param] = ref_state_dict[ref_name]
