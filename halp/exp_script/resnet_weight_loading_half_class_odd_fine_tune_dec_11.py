@@ -7,7 +7,7 @@ if __name__ == "__main__":
     exp_name = "resnet_weight_loading_half_class_odd_fine_tune_dec_11"
     ckpt_path = "resnet_weight_saving_half_class_even_dec_10/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_unk"
     n_epochs = 100 # to resume from 300
-    batch_size = 128
+    batch_size = 196 
     n_classes = 10
     l2_reg_list = [5e-4]
     # lr_list = [0.1, 0.01, 0.001, 0.0001, 1.0]
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     T_list = [391]
     dataset = "cifar10"
     model = "resnet"
-    run_option = "dryrun"
+    run_option = "run"
 
 
     for seed_list in [[1], [2], [3]]:
@@ -36,8 +36,8 @@ if __name__ == "__main__":
                 T_list,
                 dataset,
                 model,
-                cluster="dawn",
-                # cluster="starcluster",
+                #cluster="dawn",
+                cluster="starcluster",
                 run_option=run_option,
                 resnet_load_ckpt=True,
                 # resnet_load_ckpt_epoch_id=325,
@@ -62,8 +62,8 @@ if __name__ == "__main__":
                 T_list,
                 dataset,
                 model,
-                cluster="dawn",
-                # cluster="starcluster",
+                #cluster="dawn",
+                cluster="starcluster",
                 run_option=run_option,
                 resnet_load_ckpt=True,
                 # resnet_load_ckpt_epoch_id=325,

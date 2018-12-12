@@ -11,12 +11,13 @@ if __name__ == "__main__":
     batch_size = 128
     n_classes = 10
     l2_reg_list = [5e-4]
-    lr_list = [0.1, 0.01, 0.005, 0.001]
+    lr_list = [0.1]
+#    lr_list = [0.1, 0.01, 0.005, 0.001]
     # momentum_list = [0.9]
     # seed_list = [1,]
     seed_list = [1]
     # lr_list = [0.01, ]
-    momentum_list = [0.0, 0.9]
+    momentum_list = [0.9]
     # seed_list = [1,]
     T_list = [391]
     dataset = "cifar10"
@@ -24,7 +25,7 @@ if __name__ == "__main__":
     # run_option = "dryrun"
     run_option = "run"
 
-    opt_algo_list = ["lp-sgd", "lp-svrg"]
+    opt_algo_list = ["lp-sgd"]
     rounding_list = ["near"]    
     run_experiment(
         exp_name,

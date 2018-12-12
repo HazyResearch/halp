@@ -17,7 +17,7 @@ if __name__ == "__main__":
     T_list = [391]
     dataset = "cifar10"
     model = "resnet"
-    run_option = "dryrun"
+    run_option = "run"
 
     for seed_list in [[1, ], [2, ], [3, ]]:
         opt_algo_list = ["lp-sgd", "lp-svrg"]
@@ -36,8 +36,8 @@ if __name__ == "__main__":
             T_list,
             dataset,
             model,
-            cluster="dawn",
-            #cluster="starcluster",
+            #cluster="dawn",
+            cluster="starcluster",
             run_option=run_option,
             resnet_load_ckpt=True,
             # resnet_load_ckpt_epoch_id=325,
@@ -61,8 +61,8 @@ if __name__ == "__main__":
             T_list,
             dataset,
             model,
-            cluster="dawn",
-            #cluster="starcluster",
+            #cluster="dawn",
+            cluster="starcluster",
             run_option=run_option,
             resnet_load_ckpt=True,
             # resnet_load_ckpt_epoch_id=325,

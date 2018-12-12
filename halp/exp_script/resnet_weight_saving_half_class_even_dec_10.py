@@ -25,7 +25,7 @@ if __name__ == "__main__":
     dataset = "cifar10"
     model = "resnet"
     #run_option = "dryrun"
-    run_option = "dryrun"
+    run_option = "run"
     run_experiment(
         exp_name,
         n_epochs,
@@ -40,8 +40,8 @@ if __name__ == "__main__":
         T_list,
         dataset,
         model,
-        cluster="dawn",
-        # cluster="starcluster",
+        #cluster="dawn",
+        cluster="starcluster",
         run_option=run_option,
         resnet_save_ckpt=True,
         only_even_class=True)
