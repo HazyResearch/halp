@@ -39,11 +39,11 @@ class BitCenterModule(nn.Module):
                 logger.warning("None bit centering module can not change mode " \
                                + child.__class__.__name__)
     
-    def set_on_cite_compute(self, do_on_site_compute=False):
+    def set_on_site_compute(self, do_on_site_compute=False):
         self.on_site_compute = do_on_site_compute
         for child in self.children():
             if isinstance(child, BitCenterModule):
-                child.set_on_cite_compute(do_on_site_compute)
+                child.set_on_site_compute(do_on_site_compute)
             else:
                 logger.warning("None bit centering module can not set on_site_compute mode " \
                                + child.__class__.__name__)

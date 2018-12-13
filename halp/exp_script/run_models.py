@@ -107,7 +107,7 @@ DOUBLE_PREC_DEBUG = args.double_debug
 
 if args.dataset == "mnist":
     train_loader, val_loader, input_shape, n_train_sample = get_mnist_data_loader(
-        onehot=False, debug_test=args.debug_test, batch_size=args.batch_size)
+        onehot=False, debug_test=args.debug_test, batch_size=args.batch_size, args=args)
 elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size, args=args)
@@ -183,7 +183,7 @@ if DOUBLE_PREC_DEBUG:
 
 # set on set compute flag recursively for all the modules
 if args.on_site_compute:
-    model.set_on_set_compute(True)
+    model.set_on_site_compute(True)
 
 # setup optimizer
 if args.resnet_fine_tune:

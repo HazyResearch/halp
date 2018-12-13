@@ -88,10 +88,13 @@ def get_cifar10_data_loader(batch_size=128, args=None):
 	args.T = len(trainloader)
 
 	testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+	test_batch_size = 100
 	if DOUBLE_PREC_DEBUG:
 		testset = torch.utils.data.Subset(testset, np.arange(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN))
+		test_batch_size = args.batch_size
 	elif LP_DEBUG:
 		testset = torch.utils.data.Subset(testset, np.arange(batch_size * LP_DEBUG_EPOCH_LEN))
+		test_batch_size = args.batch_size	
 	if args.only_even_class:
 		testset = get_partial_classes(testset, 
 							train=False, 
@@ -102,7 +105,8 @@ def get_cifar10_data_loader(batch_size=128, args=None):
 							train=False, 
 							test_func=lambda x: x % 2 == 1, 
 							label_transform=lambda x: (x - 1) // 2)
-	testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=1)
+
+	testloader = torch.utils.data.DataLoader(testset, batch_size=test_batch_size, shuffle=False, num_workers=1)
 	
 	classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 	input_shape = (batch_size, 3, 32, 32) 

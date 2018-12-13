@@ -9,6 +9,8 @@ if sys.version_info.major < 3:
     import urllib
 else:
     import urllib.request as request
+from halp.utils.utils import LP_DEBUG_EPOCH_LEN, DOUBLE_PREC_DEBUG_EPOCH_LEN
+
 
 
 DATASET_DIR = 'datasets/'
@@ -95,7 +97,9 @@ def load_mnist(ntrain=60000, ntest=10000, onehot=True):
 
     return trX, teX, trY, teY
 
-def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1):
+def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1, args=None):
+    LP_DEBUG = args.float_debug
+    DOUBLE_PREC_DEBUG = args.double_debug
     X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
     if debug_test:
         debug_data_size = 3
@@ -105,6 +109,18 @@ def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1):
         Y_val = Y_val[0:debug_data_size]
     X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
     Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
+
+    if LP_DEBUG:
+        X_train = X_train[:(batch_size * LP_DEBUG_EPOCH_LEN)]
+        X_val = X_val[:(batch_size * LP_DEBUG_EPOCH_LEN)]
+        Y_train = Y_train[:(batch_size * LP_DEBUG_EPOCH_LEN)]
+        Y_val = Y_val[:(batch_size * LP_DEBUG_EPOCH_LEN)]
+    elif DOUBLE_PREC_DEBUG:
+        X_train = X_train[:(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
+        X_val = X_val[:(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
+        Y_train = Y_train[:(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
+        Y_val = Y_val[:(batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
+
     train_data = \
         torch.utils.data.TensorDataset(X_train, Y_train)
     train_loader = torch.utils.data.DataLoader(
@@ -114,4 +130,5 @@ def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1):
     val_loader = torch.utils.data.DataLoader(
         val_data, batch_size=batch_size, shuffle=False)
     input_shape = (batch_size,) + X_train.shape[1:]
+    args.T = len(train_loader)
     return train_loader, val_loader, input_shape, X_train.shape[0]

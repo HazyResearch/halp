@@ -10,6 +10,23 @@ python -m unittest models/lenet_test.py
 python -m unittest models/resnet_test.py
 python -m unittest utils/utils.py
 
+## eager mode test on logreg
+printf "\n\n\n eager mode bc svrg comparing to non eager mode bc svrg in double mode on lenet, they should produce very similar values"
+python run_models.py --n-epochs=3 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug | grep loss
+python run_models.py --n-epochs=3 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug --on-site-compute | grep loss
+
+## eager mode test on resnet
+printf "\n\n\n eager mode bc svrg comparing to fp svrg in double mode on resnet, they should produce very similar values"
+cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=1.0 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 --on-site-compute
+cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=1.0 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1
+
+
+## eager mode test on resnet
+printf "\n\n\n eager mode bc svrg comparing to fp svrg in single precision debug mode on resnet, they should produce relatively similar values"
+cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --float-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=1.0 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 --on-site-compute
+cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --float-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=1.0 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1
+
+
 printf "\n\n\n compare svrg and bc svrg results in double model. The following 2 run should generate almost the same test loss and accuracy\n"
 python exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --double-debug | grep loss
 python exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --double-debug | grep loss
@@ -39,7 +56,7 @@ echo "sgd done"
 printf "\n\n\n fine tune test, the svrg based optimizer should produce similar number under double mode"
 cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --resnet-fine-tune --n-epochs=3 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 | grep "Test\|epoch: 1 iter: 0"
 echo "bc svrg done"
-cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --resnet-fine-tune --n-epochs=3 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 | grep "Test\|epoch: 1 iter: 0"
+ | grep "Test\|epoch: 1 iter: 0"cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --resnet-fine-tune --n-epochs=3 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=lp-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1
 echo "lp svrg done"
 cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --resnet-fine-tune --n-epochs=3 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 | grep "Test\|epoch: 1 iter: 0"
 echo "svrg done"

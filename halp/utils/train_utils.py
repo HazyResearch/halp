@@ -315,38 +315,45 @@ def train_bit_center_optimizer(model,
             #     break
             if total_iter % T == 0:
                 optimizer.on_start_fp_steps(model)
-                for j, (X_fp, Y_fp) in enumerate(train_loader):
-                    optimizer.zero_grad()
-                    if use_cuda:
-                        X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
-                    if args.double_debug:
-                        X_fp = X_fp.double()
-                    # if model.fine_tune:
-                    #     X_fp = model.cast_func(X_fp)
-                    loss_fp = model(X_fp, Y_fp)
-                    loss_fp.backward()
-                    optimizer.step_fp()
-                    # logger.info("prep train loss epoch: " + str(epoch_id) +
-                    #             " iter: " + str(j) + " loss: " +
-                    #             str(loss_fp.item()))
+
+
+                with torch.autograd.profiler.profile() as prof:
+                    for j, (X_fp, Y_fp) in enumerate(train_loader):
+                        optimizer.zero_grad()
+                        if use_cuda:
+                            X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
+                        if args.double_debug:
+                            X_fp = X_fp.double()
+                        # if model.fine_tune:
+                        #     X_fp = model.cast_func(X_fp)
+                        loss_fp = model(X_fp, Y_fp)
+                        loss_fp.backward()
+                        optimizer.step_fp()
+                        logger.info("prep train loss epoch: " + str(epoch_id) +
+                                " iter: " + str(j) + " loss: " +
+                                str(loss_fp.item()))
+                print(prof)
+                    # exit(0)
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
 
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
-            if model.on_site_compute:
-                if args.double_debug:
-                    X = X.double()
-                model.set_mode(do_offset=True)
-                _ = model(X, Y)
-                model.set_mode(do_offset=False)
             # note here X is the input delta. It is suppose to be zero.
-            X = optimizer.cast_func(X).zero_()
+            # X = optimizer.cast_func(X).zero_()
             if dtype != "bc":
                 raise Exception(
                     "This training function does not support dtype other than bc"
                 )
             optimizer.zero_grad()
+            if model.on_site_compute:
+                if args.double_debug:
+                    X = X.double()
+                model.set_mode(do_offset=True)
+                fp_loss = model(X, Y)
+                fp_loss.backward()
+                model.set_mode(do_offset=False)
+            X = optimizer.cast_func(X).zero_()
             if args.double_debug:
                 X = X.double()
             train_loss = model(X, Y)
