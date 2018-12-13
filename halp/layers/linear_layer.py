@@ -93,12 +93,16 @@ class BitCenterLinear(BitCenterLayer, Linear):
         # use duplicated self to adapt to the pytorch API requirement
         # as this is a class member function
         if self.do_offset:
-            self.grad_output_cache[self.grad_cache_iter:min(
-                self.grad_cache_iter +
-                output[0].size()[0], self.n_train_sample)].data.copy_(
-                    self.cast_func(output[0].cpu()))
-            self.grad_cache_iter = (
-                self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
+            if self.on_site_compute:
+                self.grad_output_cache[0:output[0].size()[0]].data.copy_(self.cast_func(output[0].cpu()))
+                self.grad_cache_iter = 0
+            else:
+                self.grad_output_cache[self.grad_cache_iter:min(
+                    self.grad_cache_iter +
+                    output[0].size()[0], self.n_train_sample)].data.copy_(
+                        self.cast_func(output[0].cpu()))
+                self.grad_cache_iter = (
+                    self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
             # we use the following variable only for test purpose, we want to be able to access
             # the gradeint value wrt input in the outside world. For lp mode, it is grad_input_delta
             # for fp mode, it is grad_input

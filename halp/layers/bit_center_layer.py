@@ -20,6 +20,14 @@ class BitCenterModule(nn.Module):
 
     def __init__(self):
         nn.Module.__init__(self)
+        # note the on_site_compute mode is to support the
+        # fp compute without input data / output grad caching.
+        # The on site compute mode can be turned on via
+        # set_on_cite_compute. As the caching memory on each layer
+        # is set up after the initialization of each layer (when fp forward is first called)
+        # we can aall the set_on_cite_compute after the intialization of the entire model,
+        # and before the first forward function call.
+        self.on_site_compute = False
 
     def set_mode(self, do_offset, cache_iter=0):
         self.do_offset = do_offset
@@ -28,7 +36,16 @@ class BitCenterModule(nn.Module):
             if isinstance(child, BitCenterModule):
                 child.set_mode(do_offset, cache_iter)
             else:
-                logger.warning("None bit centering module " \
+                logger.warning("None bit centering module can not change mode " \
+                               + child.__class__.__name__)
+    
+    def set_on_cite_compute(self, do_on_site_compute=False):
+        self.on_site_compute = do_on_site_compute
+        for child in self.children():
+            if isinstance(child, BitCenterModule):
+                child.set_on_cite_compute(do_on_site_compute)
+            else:
+                logger.warning("None bit centering module can not set on_site_compute mode " \
                                + child.__class__.__name__)
 
     def print_module_types(self):
@@ -142,7 +159,9 @@ class BitCenterLayer(BitCenterModule):
             cache_shape = [1, 1]
         else:
             cache_shape = list(input.size())
-        cache_shape[0] = self.n_train_sample
+        if not self.on_site_compute:
+            # for on site compute we only need to set up the cache for one minibatch
+            cache_shape[0] = self.n_train_sample
         cache = self.cast_func(
             Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
         return cache
@@ -154,22 +173,31 @@ class BitCenterLayer(BitCenterModule):
         # because the returned gradient is not in the order as shown
         # in the Python API, e.g. the linear layer
         if self.do_offset:
-            self.grad_output_cache[self.grad_cache_iter:min(
-                self.grad_cache_iter +
-                output[0].size()[0], self.n_train_sample)].data.copy_(
-                    self.cast_func(output[0].cpu()))
-            self.grad_cache_iter = (
-                self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
+            if self.on_site_compute:
+                self.grad_output_cache[0:output[0].size()[0]].data.copy_(self.cast_func(output[0].cpu()))
+                self.grad_cache_iter = 0
+            else:
+                self.grad_output_cache[self.grad_cache_iter:min(
+                    self.grad_cache_iter +
+                    output[0].size()[0], self.n_train_sample)].data.copy_(
+                        self.cast_func(output[0].cpu()))
+                self.grad_cache_iter = (
+                    self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
         self.input_grad_for_test = input[0]
 
     def update_input_cache(self, input):
         if self.do_offset:
-            self.input_cache[self.cache_iter:min(
-                self.cache_iter +
-                input.size()[0], self.n_train_sample)].data.copy_(
-                    self.cast_func(input.cpu()))
-            self.cache_iter = (
-                self.cache_iter + input.size(0)) % self.n_train_sample
+            if self.on_site_compute:
+                self.input_cache[0:input.size()[0]].data.copy_(
+                        self.cast_func(input.cpu()))
+                self.cache_iter = 0
+            else:
+                self.input_cache[self.cache_iter:min(
+                    self.cache_iter +
+                    input.size()[0], self.n_train_sample)].data.copy_(
+                        self.cast_func(input.cpu()))
+                self.cache_iter = (
+                    self.cache_iter + input.size(0)) % self.n_train_sample
 
     def check_or_setup_input_cache(self, input):
         if self.input_cache is None:
@@ -182,6 +210,8 @@ class BitCenterLayer(BitCenterModule):
             self.grad_cache_iter = 0
 
     def get_input_cache_grad_cache(self, input):
+        if self.on_site_compute:
+            assert self.grad_cache_iter == 0 or self.cache_iter == 0
         input_lp = self.input_cache[self.cache_iter:(
             self.cache_iter + input.size(0))].cuda()
         grad_output_lp = \
@@ -189,10 +219,12 @@ class BitCenterLayer(BitCenterModule):
         return input_lp, grad_output_lp
 
     def increment_cache_iter(self, input):
-        self.cache_iter = (
-            self.cache_iter + input.size(0)) % self.n_train_sample
-        self.grad_cache_iter = (
-            self.grad_cache_iter + input.size(0)) % self.n_train_sample
+        # note for on_site_compute mode, you should always keep cache iter at 0
+        if not self.on_site_compute:
+            self.cache_iter = (
+                self.cache_iter + input.size(0)) % self.n_train_sample
+            self.grad_cache_iter = (
+                self.grad_cache_iter + input.size(0)) % self.n_train_sample
 
     def forward_fp(self, input):
         self.check_or_setup_input_cache(input)

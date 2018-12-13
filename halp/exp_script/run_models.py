@@ -95,6 +95,8 @@ parser.add_argument("--only-odd-class", action="store_true",
                     help="using double precision to do debug and test")
 parser.add_argument("--only-even-class", action="store_true",
                     help="using double precision to do debug and test")
+parser.add_argument("--on-site-compute", action="store_true", 
+                    help="use on site fp compute to avoid host memory caching")
 args = parser.parse_args()
 utils.set_seed(args.seed)
 
@@ -178,6 +180,10 @@ if args.cuda:
 
 if DOUBLE_PREC_DEBUG:
     model.double()
+
+# set on set compute flag recursively for all the modules
+if args.on_site_compute:
+    model.set_on_set_compute(True)
 
 # setup optimizer
 if args.resnet_fine_tune:

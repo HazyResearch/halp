@@ -334,6 +334,12 @@ def train_bit_center_optimizer(model,
 
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
+            if model.on_site_compute:
+                if args.double_debug:
+                    X = X.double()
+                model.set_mode(do_offset=True)
+                _ = model(X, Y)
+                model.set_mode(do_offset=False)
             # note here X is the input delta. It is suppose to be zero.
             X = optimizer.cast_func(X).zero_()
             if dtype != "bc":

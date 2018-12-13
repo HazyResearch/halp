@@ -52,16 +52,8 @@ class BitCenterReLU(BitCenterLayer, nn.ReLU):
     def forward_lp(self, input):
         # Need to test do_offset mode whether gradient is updated properly
         input_lp, grad_output_lp = self.get_input_cache_grad_cache(input)
-        # input_lp = self.input_cache[self.cache_iter:(
-        #     self.cache_iter + input.size(0))].cuda()
-        # grad_output_lp = \
-        #     self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         output = self.lp_func(input_delta, input_lp, grad_output_lp)
-        # self.cache_iter = (
-        #     self.cache_iter + input.size(0)) % self.n_train_sample
-        # self.grad_cache_iter = (
-        #     self.grad_cache_iter + input.size(0)) % self.n_train_sample
         self.increment_cache_iter(input)
         return output
 
@@ -79,17 +71,17 @@ class BitCenterReLU(BitCenterLayer, nn.ReLU):
         return output
 
 
-    def update_grad_output_cache(self, self1, input, output):
-        # use duplicated self to adapt to the pytorch API requirement
-        # as this is a class member function.
-        # Specific layer might need to update this function. This is
-        # because the returned gradient is not in the order as shown
-        # in the Python API, e.g. the linear layer
-        if self.do_offset:
-            self.grad_output_cache[self.grad_cache_iter:min(
-                self.grad_cache_iter +
-                output[0].size()[0], self.n_train_sample)].data.copy_(
-                    self.cast_func(output[0].cpu()))
-            self.grad_cache_iter = (
-                self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
-        self.input_grad_for_test = input[0]
+    # def update_grad_output_cache(self, self1, input, output):
+    #     # use duplicated self to adapt to the pytorch API requirement
+    #     # as this is a class member function.
+    #     # Specific layer might need to update this function. This is
+    #     # because the returned gradient is not in the order as shown
+    #     # in the Python API, e.g. the linear layer
+    #     if self.do_offset:
+    #         self.grad_output_cache[self.grad_cache_iter:min(
+    #             self.grad_cache_iter +
+    #             output[0].size()[0], self.n_train_sample)].data.copy_(
+    #                 self.cast_func(output[0].cpu()))
+    #         self.grad_cache_iter = (
+    #             self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
+    #     self.input_grad_for_test = input[0]

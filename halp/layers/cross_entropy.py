@@ -100,12 +100,17 @@ class BitCenterCrossEntropy(BitCenterLayer):
         if self.do_offset:
             # note here grad_output_lp is actually the grad_input offset.
             # This is because we want to utilize the existing infra in bitCenterLayer
-            self.grad_output_cache[self.grad_cache_iter:min(
-                self.grad_cache_iter +
-                input[0].size(0), self.n_train_sample)].data.copy_(
-                    self.cast_func(input[0].cpu()))
-            self.grad_cache_iter = (
-                self.grad_cache_iter + input[0].size(0)) % self.n_train_sample
+            if self.on_site_compute:
+                self.grad_output_cache[0:input[0].size(0)].data.copy_(
+                        self.cast_func(input[0].cpu()))
+                self.grad_cache_iter = 0
+            else:
+                self.grad_output_cache[self.grad_cache_iter:min(
+                    self.grad_cache_iter +
+                    input[0].size(0), self.n_train_sample)].data.copy_(
+                        self.cast_func(input[0].cpu()))
+                self.grad_cache_iter = (
+                    self.grad_cache_iter + input[0].size(0)) % self.n_train_sample
             # we use the following variable only for test purpose, we want to be able to access
             # the gradeint value wrt input in the outside world. For lp mode, it is grad_input_delta
             # for fp mode, it is grad_input
@@ -126,8 +131,12 @@ class BitCenterCrossEntropy(BitCenterLayer):
 
     def forward_lp(self, input, target):
         # Need to test do_offset mode whether gradient is updated properly
-        input_lp = self.input_cache[self.cache_iter:(
-            self.cache_iter + input.size(0))].cuda()
+        if self.on_site_compute:
+            assert self.cache_iter == 0 and self.grad_cache_iter == 0
+            input_lp = self.input_cache[0:input.size(0)].cuda()
+        else:
+            input_lp = self.input_cache[self.cache_iter:(
+                self.cache_iter + input.size(0))].cuda()
         # give a handle to access input_lp from outside
         self.input_lp = input_lp
         # note here grad_output_lp is actually the grad_input offset.
@@ -137,10 +146,6 @@ class BitCenterCrossEntropy(BitCenterLayer):
         input_delta = input
         output = self.lp_func(input_delta, input_lp, target, grad_output_lp)
         self.increment_cache_iter(input)
-        # self.cache_iter = (
-        #     self.cache_iter + input.size(0)) % self.n_train_sample
-        # self.grad_cache_iter = (
-        #     self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output
 
     def forward(self, input, target):
