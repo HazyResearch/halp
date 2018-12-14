@@ -30,7 +30,8 @@ def run_experiment(exp_name,
                    ckpt_path="./test/",
                    resnet_fine_tune=False,
                    only_even_class=False,
-                   only_odd_class=False):
+                   only_odd_class=False,
+                   on_site_compute=False):
     template = "python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py " \
                + "--n-epochs=unk " \
                + "--batch-size=unk " \
@@ -54,6 +55,9 @@ def run_experiment(exp_name,
       template += " --only-even-class"
     elif only_odd_class:
       template += " --only-odd-class"
+
+    if on_site_compute:
+      template += " --on-site-compute"
 
     # data_path = "/dfs/scratch0/zjian/float_halp/data/" + experiment_name
     opt = "sgd"
