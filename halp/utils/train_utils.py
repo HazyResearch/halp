@@ -329,7 +329,7 @@ def train_bit_center_optimizer(model,
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
-                    #     logger.info("prep train loss epoch: " + str(epoch_id) +
+                    # logger.info("prep train loss epoch: " + str(epoch_id) +
                     #             " iter: " + str(j) + " loss: " +
                     #             str(loss_fp.item()))
                 optimizer.on_end_fp_steps(model)
@@ -353,6 +353,7 @@ def train_bit_center_optimizer(model,
                 fp_loss = model(X, Y)
                 fp_loss.backward()
                 model.set_mode(do_offset=False)
+                optimizer.zero_grad()
 
             X = optimizer.cast_func(X).zero_()
             if args.double_debug:

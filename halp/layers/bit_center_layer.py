@@ -67,7 +67,7 @@ class BitCenterModule(nn.Module):
                 continue
             if name + "_delta" in state_dict.keys():
                 p_delta = state_dict[name + "_delta"]
-                if self.on_site_compute and p_delta.dtype != torch.DoubleTensor:
+                if self.on_site_compute and p_delta.dtype != torch.float64:
                     # note to test on site compute mode, we use cpu norm
                     # when we use double precision for numerical comparison
                     param_norm += torch.sum((p.data.type(torch.cuda.FloatTensor) + p_delta.data.type(torch.cuda.FloatTensor))**2).item()
