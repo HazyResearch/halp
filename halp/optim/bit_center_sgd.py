@@ -110,27 +110,25 @@ class BitCenterOptim(SGD):
         return named_parameters
 
     def step_lp(self):
-        for param_group in self.param_groups:
-            lr = self.cast_func(torch.Tensor(np.array(param_group["lr"])))
-            weight_decay = self.cast_func(
-                torch.Tensor(np.array(param_group["weight_decay"])))
-            momentum = self.cast_func(
-                torch.Tensor(np.array(param_group["momentum"])))
+        for param_group in self.param_groups:   
+            lr = param_group["lr"]
+            weight_decay = param_group["weight_decay"]
+            momentum = param_group["momentum"]
             named_delta_parameters = self.get_named_delta_parameters()
             for p_name, p in named_delta_parameters:
                 cache = self.grad_cache[p_name.split("_delta")[0]]
                 grad_offset = self.get_single_grad_offset(cache)
-                if weight_decay.item() != 0.0:
-                    p.grad.data.add_(weight_decay.item(), p.data)
-                if (momentum.numel() != 0) and (momentum.item() != 0.0):
+                if weight_decay != 0.0:
+                    p.grad.data.add_(weight_decay, p.data)
+                if (momentum is not None) and (momentum != 0.0):
                     param_state = self.state[p]
                     if "momentum_buffer" not in param_state:
                         param_state["momentum_buffer"] = torch.zeros_like(
                             p.data)
                     buf = param_state["momentum_buffer"]
-                    buf.mul_(momentum.item()).add_(lr.item() * p.grad.data)
+                    buf.mul_(momentum).add_(lr * p.grad.data)
                 else:
-                    buf = lr.item() * p.grad.data
+                    buf = lr * p.grad.data
                 if p.is_cuda:
                     buf.add_(grad_offset.cuda())
                 else:
@@ -168,8 +166,7 @@ class BitCenterOptim(SGD):
                                     param_offset_group["params_name"]):
                                 if p_offset_lp_name == p_name.split(
                                         "_delta")[0] + "_lp":
-                                    p_offset_lp.data.copy_(
-                                        self.cast_func(p_offset))
+                                    p_offset_lp.data.copy_(p_offset)
                                     lp_corr_found = True
 
             if corr_found == False or lp_corr_found == False:
@@ -259,7 +256,7 @@ class BitCenterSGD(BitCenterOptim):
 
     def update_single_grad_cache(self, grad, cache):
         # the input grad is actually grad * lr in function update_grad_cache
-        cache[self.cache_iter].copy_(self.cast_func(grad.cpu()))
+        cache[self.cache_iter].copy_(grad)
 
     def get_single_grad_offset(self, cache):
         # we assume the size of the first dimension is the minibatch size

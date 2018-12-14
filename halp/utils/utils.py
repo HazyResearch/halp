@@ -8,10 +8,10 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
 # DOUBLE_PREC_DEBUG = False
-DOUBLE_PREC_DEBUG_EPOCH_LEN = 1
+DOUBLE_PREC_DEBUG_EPOCH_LEN = 3
 
 # LP_DEBUG = False
-LP_DEBUG_EPOCH_LEN = 5
+LP_DEBUG_EPOCH_LEN = 3
 
 
 def single_to_half_det(tensor):
@@ -65,8 +65,7 @@ def single_to_half_stoc(tensor):
 
 
 def void_cast_func(tensor):
-    # return tensor.clone()
-    return tensor
+    return tensor.clone()
 
 
 def get_recur_attr(obj, attr_str_list):
