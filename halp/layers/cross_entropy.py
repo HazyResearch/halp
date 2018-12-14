@@ -102,7 +102,7 @@ class BitCenterCrossEntropy(BitCenterLayer):
             # This is because we want to utilize the existing infra in bitCenterLayer
             if self.on_site_compute:
                 self.grad_output_cache[0:input[0].size(0)].data.copy_(
-                        self.cast_func(input[0].cpu()))
+                        input[0].cpu())
                 self.grad_cache_iter = 0
             else:
                 self.grad_output_cache[self.grad_cache_iter:min(

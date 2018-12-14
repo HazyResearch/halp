@@ -94,7 +94,7 @@ class BitCenterLinear(BitCenterLayer, Linear):
         # as this is a class member function
         if self.do_offset:
             if self.on_site_compute:
-                self.grad_output_cache[0:output[0].size()[0]].data.copy_(self.cast_func(output[0].cpu()))
+                self.grad_output_cache[0:output[0].size()[0]].data.copy_(output[0])
                 self.grad_cache_iter = 0
             else:
                 self.grad_output_cache[self.grad_cache_iter:min(

@@ -67,9 +67,17 @@ class BitCenterModule(nn.Module):
                 continue
             if name + "_delta" in state_dict.keys():
                 p_delta = state_dict[name + "_delta"]
-                param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_delta.data.type(torch.FloatTensor))**2).item()
+                if self.on_site_compute and p_delta.dtype != torch.DoubleTensor:
+                    # note to test on site compute mode, we use cpu norm
+                    # when we use double precision for numerical comparison
+                    param_norm += torch.sum((p.data.type(torch.cuda.FloatTensor) + p_delta.data.type(torch.cuda.FloatTensor))**2).item()
+                else:
+                    param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_delta.data.type(torch.FloatTensor))**2).item()
             else:
-                param_norm += torch.sum(p.data.type(torch.FloatTensor)**2).item()
+                if self.on_site_compute and p_delta.dtype != torch.DoubleTensor:
+                    param_norm += torch.sum(p.data.type(torch.cuda.FloatTensor)**2).item()
+                else:
+                    param_norm += torch.sum(p.data.type(torch.FloatTensor)**2).item()
             # print("check param norm ", name, param_norm, p.requires_grad)
         return param_norm
 
@@ -164,6 +172,8 @@ class BitCenterLayer(BitCenterModule):
             cache_shape[0] = self.n_train_sample
         cache = self.cast_func(
             Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
+        if self.on_site_compute:
+            cache = cache.cuda()
         return cache
 
     def update_grad_output_cache(self, self1, input, output):
@@ -174,13 +184,12 @@ class BitCenterLayer(BitCenterModule):
         # in the Python API, e.g. the linear layer
         if self.do_offset:
             if self.on_site_compute:
-                self.grad_output_cache[0:output[0].size()[0]].data.copy_(self.cast_func(output[0].cpu()))
+                self.grad_output_cache[0:output[0].size()[0]].data.copy_(output[0])
                 self.grad_cache_iter = 0
             else:
                 self.grad_output_cache[self.grad_cache_iter:min(
                     self.grad_cache_iter +
-                    output[0].size()[0], self.n_train_sample)].data.copy_(
-                        self.cast_func(output[0].cpu()))
+                    output[0].size()[0], self.n_train_sample)].data.copy_(output[0].cpu())
                 self.grad_cache_iter = (
                     self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
         self.input_grad_for_test = input[0]
@@ -188,14 +197,12 @@ class BitCenterLayer(BitCenterModule):
     def update_input_cache(self, input):
         if self.do_offset:
             if self.on_site_compute:
-                self.input_cache[0:input.size()[0]].data.copy_(
-                        self.cast_func(input.cpu()))
+                self.input_cache[0:input.size()[0]].data.copy_(input)
                 self.cache_iter = 0
             else:
                 self.input_cache[self.cache_iter:min(
                     self.cache_iter +
-                    input.size()[0], self.n_train_sample)].data.copy_(
-                        self.cast_func(input.cpu()))
+                    input.size()[0], self.n_train_sample)].data.copy_(input)
                 self.cache_iter = (
                     self.cache_iter + input.size(0)) % self.n_train_sample
 
