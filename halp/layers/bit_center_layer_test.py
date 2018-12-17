@@ -70,10 +70,13 @@ class TestBitCenterLayer(HalpTest):
         output_lp = layer(*input_delta)
         loss_lp = torch.sum(0.5 * output_lp * output_lp)
         loss_lp.backward()
-        grad_input_delta = layer.input_grad_for_test.clone()
-        # as we only have 1 minibatch, we can directly use layer.grad_output_cache
-        input_grad = grad_input_fp + grad_input_delta
-        grad_list.append(input_grad)
+        if layer.input_grad_for_test is not None:
+            grad_input_delta = layer.input_grad_for_test.clone()
+            # as we only have 1 minibatch, we can directly use layer.grad_output_cache
+            input_grad = grad_input_fp + grad_input_delta
+            grad_list.append(input_grad)
+        else:
+            grad_list.append(None)
 
         grad_list += self.get_analytical_param_grad(layer)
         return output_lp + output_fp, grad_list
@@ -230,7 +233,13 @@ class TestBitCenterLayer(HalpTest):
                         start_idx:end_idx, :].numpy()
                     assert (input_cache_before == 0).all()
                     assert (grad_input_cache_before == 0).all()
-                    assert (input_cache_before != input_cache_after).all()
+                    if layer.input_cache.dtype == torch.long:
+                        # if cache is long type, there is possibility
+                        # that some entries are 0 both before and after
+                        # update
+                        assert np.sum(input_cache_before != input_cache_after) != 0
+                    else:
+                        assert (input_cache_before != input_cache_after).all()
                     assert (grad_input_cache_before !=
                             grad_input_cache_after).all()
             # test lp mode

@@ -5,6 +5,7 @@ python -m unittest layers/conv_layer_test.py
 python -m unittest layers/relu_layer_test.py
 python -m unittest layers/pool_layer_test.py
 python -m unittest layers/batch_norm_layer_test.py
+python -m unittest layers/embedding_test.py
 python -m unittest models/logistic_regression_test.py
 python -m unittest models/lenet_test.py
 python -m unittest models/resnet_test.py

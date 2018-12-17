@@ -170,8 +170,12 @@ class BitCenterLayer(BitCenterModule):
         if not self.on_site_compute:
             # for on site compute we only need to set up the cache for one minibatch
             cache_shape[0] = self.n_train_sample
-        cache = self.cast_func(
-            Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
+        if input.dtype == torch.long:
+            # if the input is int type like for embedding, we do not cast it.
+            cache = Variable(torch.zeros(cache_shape).type(input.dtype)).cpu()
+        else:
+            cache = self.cast_func(
+                Variable(torch.zeros(cache_shape).type(input.dtype))).cpu()
         if self.on_site_compute:
             cache = cache.cuda()
         return cache
