@@ -38,7 +38,7 @@ class BitCenterModule(nn.Module):
             else:
                 logger.warning("None bit centering module can not change mode " \
                                + child.__class__.__name__)
-    
+
     def set_on_site_compute(self, do_on_site_compute=False):
         self.on_site_compute = do_on_site_compute
         for child in self.children():
@@ -70,14 +70,20 @@ class BitCenterModule(nn.Module):
                 if self.on_site_compute and p_delta.dtype != torch.float64:
                     # note to test on site compute mode, we use cpu norm
                     # when we use double precision for numerical comparison
-                    param_norm += torch.sum((p.data.type(torch.cuda.FloatTensor) + p_delta.data.type(torch.cuda.FloatTensor))**2).item()
+                    param_norm += torch.sum(
+                        (p.data.type(torch.cuda.FloatTensor) +
+                         p_delta.data.type(torch.cuda.FloatTensor))**2).item()
                 else:
-                    param_norm += torch.sum((p.data.type(torch.FloatTensor) + p_delta.data.type(torch.FloatTensor))**2).item()
+                    param_norm += torch.sum(
+                        (p.data.type(torch.FloatTensor) + p_delta.data.type(
+                            torch.FloatTensor))**2).item()
             else:
                 if self.on_site_compute and p_delta.dtype != torch.DoubleTensor:
-                    param_norm += torch.sum(p.data.type(torch.cuda.FloatTensor)**2).item()
+                    param_norm += torch.sum(
+                        p.data.type(torch.cuda.FloatTensor)**2).item()
                 else:
-                    param_norm += torch.sum(p.data.type(torch.FloatTensor)**2).item()
+                    param_norm += torch.sum(p.data.type(torch.FloatTensor)
+                                            **2).item()
             # print("check param norm ", name, param_norm, p.requires_grad)
         return param_norm
 
@@ -188,14 +194,16 @@ class BitCenterLayer(BitCenterModule):
         # in the Python API, e.g. the linear layer
         if self.do_offset:
             if self.on_site_compute:
-                self.grad_output_cache[0:output[0].size()[0]].data.copy_(output[0])
+                self.grad_output_cache[0:output[0].size()[0]].data.copy_(
+                    output[0])
                 self.grad_cache_iter = 0
             else:
                 self.grad_output_cache[self.grad_cache_iter:min(
                     self.grad_cache_iter +
-                    output[0].size()[0], self.n_train_sample)].data.copy_(output[0].cpu())
-                self.grad_cache_iter = (
-                    self.grad_cache_iter + output[0].size(0)) % self.n_train_sample
+                    output[0].size()[0], self.n_train_sample)].data.copy_(
+                        output[0].cpu())
+                self.grad_cache_iter = (self.grad_cache_iter + output[0].size(
+                    0)) % self.n_train_sample
         self.input_grad_for_test = input[0]
 
     def update_input_cache(self, input):
@@ -277,3 +285,36 @@ class BitCenterLayer(BitCenterModule):
             return self.forward_fp(input)
         else:
             return self.forward_lp(input)
+
+
+class BitCenterActivation(BitCenterLayer):
+    '''
+    Base class for activation layers like Relu and tanh
+    '''
+    def __init__(self,
+                 fp_functional,
+                 lp_functional,
+                 cast_func=void_cast_func,
+                 n_train_sample=1):
+        BitCenterLayer.__init__(
+            self,
+            fp_functional=fp_functional,
+            lp_functional=lp_functional,
+            cast_func=cast_func,
+            bias=False,
+            n_train_sample=n_train_sample)
+
+    def forward_lp(self, input):
+        # Need to test do_offset mode whether gradient is updated properly
+        input_lp, grad_output_lp = self.get_input_cache_grad_cache(input)
+        input_delta = input
+        output = self.lp_func(input_delta, input_lp, grad_output_lp)
+        self.increment_cache_iter(input)
+        return output
+
+    def forward_fp(self, input):
+        self.check_or_setup_input_cache(input)
+        output = self.fp_func(input)
+        self.check_or_setup_grad_cache(output)
+        self.update_input_cache(input)
+        return output

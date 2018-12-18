@@ -3,6 +3,8 @@ python -m unittest layers/linear_layer_test.py
 python -m unittest layers/cross_entropy_test.py
 python -m unittest layers/conv_layer_test.py
 python -m unittest layers/relu_layer_test.py
+python -m unittest layers/tanh_layer_test.py
+python -m unittest layers/sigmoid_layer_test.py
 python -m unittest layers/pool_layer_test.py
 python -m unittest layers/batch_norm_layer_test.py
 python -m unittest layers/embedding_test.py
