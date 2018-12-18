@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from torch.nn import Parameter
 import numpy as np
 from halp.layers.linear_layer import BitCenterLinear, bit_center_linear
 from torch.autograd import gradcheck
@@ -255,3 +256,101 @@ class TestBitCenterLayer(HalpTest):
                     cast_func == single_to_half_stoc):
                 self.check_layer_param_and_cache(layer)
         logger.info(self.__class__.__name__ + " layer test passed!")
+
+
+
+class TestBitCenterDifferentiableActivationLayer(TestBitCenterLayer):
+    '''
+    Test the functionality of bit centering activation like tanh and sigmoid
+    '''
+
+    def get_config(self, type="grad_check"):
+        config = {}
+        if type == "grad_check":
+            # config["n_train_sample"] = 1
+            # config["channel_in"] = 1
+            # config["w_in"] = 1
+            # config["h_in"] = 1
+            # config["cast_func"] = void_cast_func
+            # config["do_double"] = True
+            # config["seed"] = 0
+            # config["batch_size"] = 1
+            config["n_train_sample"] = 5
+            config["channel_in"] = 7
+            config["w_in"] = 4
+            config["h_in"] = 9
+            config["cast_func"] = void_cast_func
+            config["do_double"] = True
+            config["seed"] = 0
+            config["batch_size"] = 5
+        elif type == "fw_bw_proc":
+            config["n_train_sample"] = 17
+            config["channel_in"] = 6
+            config["w_in"] = 3
+            config["h_in"] = 5
+            config["cast_func"] = single_to_half_det
+            config["do_double"] = False
+            config["seed"] = 0
+            config["batch_size"] = 4
+        else:
+            raise Exception("Config type not supported!")
+        return config
+
+    def check_layer_param_and_cache(self, layer):
+        t_list = [(layer.input_cache, torch.half, False, False),
+                  (layer.grad_output_cache, torch.half, False, False)]
+        self.CheckLayerTensorProperty(t_list)
+        self.CheckLayerTensorGradProperty(t_list)
+
+    def get_input(self,
+                  channel_in,
+                  w_in,
+                  h_in,
+                  cast_func=void_cast_func,
+                  bias=False,
+                  do_double=True,
+                  seed=0,
+                  batch_size=1,
+                  n_train_sample=1):
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
+        if do_double:
+            input_delta = Parameter(
+                torch.randn(
+                    n_train_sample, channel_in, w_in, h_in,
+                    dtype=torch.double).cuda(),
+                requires_grad=True)
+            input_fp = Parameter(
+                torch.randn(
+                    n_train_sample, channel_in, w_in, h_in,
+                    dtype=torch.double).cuda(),
+                requires_grad=True)
+        else:
+            input_delta = Parameter(
+                cast_func(
+                    torch.randn(
+                        n_train_sample,
+                        channel_in,
+                        w_in,
+                        h_in,
+                        dtype=torch.double).cuda()),
+                requires_grad=True)
+            input_fp = Parameter(
+                torch.randn(
+                    n_train_sample, channel_in, w_in, h_in,
+                    dtype=torch.float).cuda(),
+                requires_grad=True)
+        return [
+            input_fp,
+        ], [
+            input_delta,
+        ]
+
+    def get_analytical_param_grad(self, layer):
+      # as there is no param in the relu layer, we use empty function
+      return []
+
+    def get_numerical_param_grad(self, layer, input, get_loss, perturb_eps):
+      return []
