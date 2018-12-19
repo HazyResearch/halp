@@ -4,6 +4,7 @@ python -m unittest layers/cross_entropy_test.py
 python -m unittest layers/conv_layer_test.py
 python -m unittest layers/relu_layer_test.py
 python -m unittest layers/tanh_layer_test.py
+python -m unittest layers/ele_mult_test.py
 python -m unittest layers/sigmoid_layer_test.py
 python -m unittest layers/pool_layer_test.py
 python -m unittest layers/batch_norm_layer_test.py
@@ -12,6 +13,7 @@ python -m unittest models/logistic_regression_test.py
 python -m unittest models/lenet_test.py
 python -m unittest models/resnet_test.py
 python -m unittest utils/utils.py
+
 
 ## eager mode test on logreg
 printf "\n\n\n eager mode bc svrg comparing to non eager mode bc svrg in double mode on lenet, they should produce very similar values\n"

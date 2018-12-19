@@ -5,14 +5,14 @@ from torch.nn import Parameter
 from halp.layers.tanh_layer import BitCenterTanh, bit_center_tanh
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 from unittest import TestCase
-from halp.layers.bit_center_layer_test import TestBitCenterDifferentiableActivationLayer
+from halp.layers.bit_center_layer_test import TestBitCenterNoParamLayer
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-class TestBitCenterSigmoidLayer(TestBitCenterDifferentiableActivationLayer, TestCase):
+class TestBitCenterSigmoidLayer(TestBitCenterNoParamLayer, TestCase):
     def prepare_layer(self,
                       channel_in,
                       w_in,

@@ -5,10 +5,10 @@ from torch.nn import Parameter
 from halp.layers.sigmoid_layer import BitCenterSigmoid, bit_center_sigmoid
 from halp.utils.utils import void_cast_func, single_to_half_det, single_to_half_stoc
 from unittest import TestCase
-from halp.layers.bit_center_layer_test import TestBitCenterDifferentiableActivationLayer
+from halp.layers.bit_center_layer_test import TestBitCenterNoParamLayer
 
 
-class TestBitCenterSigmoidLayer(TestBitCenterDifferentiableActivationLayer, TestCase):
+class TestBitCenterSigmoidLayer(TestBitCenterNoParamLayer, TestCase):
     def prepare_layer(self,
                       channel_in,
                       w_in,

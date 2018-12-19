@@ -65,17 +65,22 @@ class TestBitCenterLayer(HalpTest):
         output_fp_copy = output_fp.data.clone()
         loss_fp = torch.sum(0.5 * output_fp * output_fp)
         loss_fp.backward()
-        grad_input_fp = layer.input_grad_for_test.clone()
-
+        grad_input_fp = copy.deepcopy(layer.input_grad_for_test)
         layer.set_mode(do_offset=False)
         output_lp = layer(*input_delta)
         loss_lp = torch.sum(0.5 * output_lp * output_lp)
         loss_lp.backward()
         if layer.input_grad_for_test is not None:
-            grad_input_delta = layer.input_grad_for_test.clone()
+            grad_input_delta = copy.deepcopy(layer.input_grad_for_test)
             # as we only have 1 minibatch, we can directly use layer.grad_output_cache
-            input_grad = grad_input_fp + grad_input_delta
-            grad_list.append(input_grad)
+            if isinstance(grad_input_delta, list) or isinstance(
+                    grad_input_delta, tuple):
+                grad_list += [
+                    x + y for x, y in zip(grad_input_fp, grad_input_delta)
+                ]
+            else:
+                input_grad = grad_input_fp + grad_input_delta
+                grad_list.append(input_grad)
         else:
             grad_list.append(None)
 
@@ -124,9 +129,10 @@ class TestBitCenterLayer(HalpTest):
         input = []
         for i, (x, y) in enumerate(zip(input_fp, input_delta)):
             input.append(x + y)
-        num_input_grad = get_numerical_jacobian(
-            get_loss, input, target=input[0], eps=perturb_eps)
-        grad_list.append(num_input_grad)
+        for x in input:
+            num_input_grad = get_numerical_jacobian(
+                get_loss, input, target=x, eps=perturb_eps)
+            grad_list.append(num_input_grad)
         grad_list += self.get_numerical_param_grad(layer, input, get_loss,
                                                    perturb_eps)
         return output_final, grad_list
@@ -217,8 +223,17 @@ class TestBitCenterLayer(HalpTest):
                 start_idx = i * minibatch_size
                 end_idx = min((i + 1) * minibatch_size, n_sample)
                 if i != 0:
-                    input_cache_before = layer.input_cache[
-                        start_idx:end_idx].clone().numpy()
+                    if isinstance(layer.input_cache, list) or isinstance(
+                            layer.input_cache, tuple):
+                        input_cache_before = [
+                            x[start_idx:end_idx].clone().numpy()
+                            for x in layer.input_cache
+                        ]
+                    else:
+                        input_cache_before = [
+                            layer.input_cache[start_idx:end_idx].clone().
+                            numpy(),
+                        ]
                     grad_input_cache_before = layer.grad_output_cache[
                         start_idx:end_idx].clone().numpy()
                 config["n_train_sample"] = end_idx - start_idx
@@ -228,21 +243,45 @@ class TestBitCenterLayer(HalpTest):
                 input_tensor_list.append(input_fp)
                 torch.sum(output).backward()
                 if i != 0:
-                    input_cache_after = layer.input_cache[start_idx:
-                                                          end_idx, :].numpy()
+                    # test grad cache
                     grad_input_cache_after = layer.grad_output_cache[
                         start_idx:end_idx, :].numpy()
-                    assert (input_cache_before == 0).all()
                     assert (grad_input_cache_before == 0).all()
-                    if layer.input_cache.dtype == torch.long:
-                        # if cache is long type, there is possibility
-                        # that some entries are 0 both before and after
-                        # update
-                        assert np.sum(input_cache_before != input_cache_after) != 0
-                    else:
-                        assert (input_cache_before != input_cache_after).all()
                     assert (grad_input_cache_before !=
                             grad_input_cache_after).all()
+
+                    # test input cache
+                    if isinstance(layer.input_cache, list) or isinstance(
+                            layer.input_cache, tuple):
+                        input_cache_after = [
+                            x[start_idx:end_idx].clone().numpy()
+                            for x in layer.input_cache
+                        ]
+                    else:
+                        input_cache_after = [
+                            layer.input_cache[start_idx:end_idx].clone().
+                            numpy(),
+                        ]
+
+                    def test_input_cache(input_cache_before_list,
+                                         input_cache_after_list):
+                        assert len(input_cache_before_list) == len(
+                            input_cache_after_list)
+                        for input_cache_before, input_cache_after in \
+                            zip(input_cache_before_list, input_cache_after_list):
+                            assert (input_cache_before == 0).all()
+                            if input_cache_before.dtype == np.int64:
+                                # if cache is long type, there is possibility
+                                # that some entries are 0 both before and after
+                                # update
+                                assert np.sum(input_cache_before !=
+                                              input_cache_after) != 0
+                            else:
+                                assert (input_cache_before !=
+                                        input_cache_after).all()
+
+                    test_input_cache(input_cache_before, input_cache_after)
+
             # test lp mode
             layer.set_mode(do_offset=False)
             if (cast_func == single_to_half_det) or (
@@ -258,8 +297,7 @@ class TestBitCenterLayer(HalpTest):
         logger.info(self.__class__.__name__ + " layer test passed!")
 
 
-
-class TestBitCenterDifferentiableActivationLayer(TestBitCenterLayer):
+class TestBitCenterNoParamLayer(TestBitCenterLayer):
     '''
     Test the functionality of bit centering activation like tanh and sigmoid
     '''
@@ -267,14 +305,6 @@ class TestBitCenterDifferentiableActivationLayer(TestBitCenterLayer):
     def get_config(self, type="grad_check"):
         config = {}
         if type == "grad_check":
-            # config["n_train_sample"] = 1
-            # config["channel_in"] = 1
-            # config["w_in"] = 1
-            # config["h_in"] = 1
-            # config["cast_func"] = void_cast_func
-            # config["do_double"] = True
-            # config["seed"] = 0
-            # config["batch_size"] = 1
             config["n_train_sample"] = 5
             config["channel_in"] = 7
             config["w_in"] = 4
@@ -297,8 +327,13 @@ class TestBitCenterDifferentiableActivationLayer(TestBitCenterLayer):
         return config
 
     def check_layer_param_and_cache(self, layer):
-        t_list = [(layer.input_cache, torch.half, False, False),
-                  (layer.grad_output_cache, torch.half, False, False)]
+        t_list = [(layer.grad_output_cache, torch.half, False, False)]
+        if isinstance(layer.input_cache, list) or isinstance(
+                layer.input_cache, tuple):
+            t_list += [(x, torch.half, False, False)
+                       for x in layer.input_cache]
+        else:
+            t_list += [(layer.input_cache, torch.half, False, False)]
         self.CheckLayerTensorProperty(t_list)
         self.CheckLayerTensorGradProperty(t_list)
 
@@ -349,8 +384,8 @@ class TestBitCenterDifferentiableActivationLayer(TestBitCenterLayer):
         ]
 
     def get_analytical_param_grad(self, layer):
-      # as there is no param in the relu layer, we use empty function
-      return []
+        # as there is no param in the relu layer, we use empty function
+        return []
 
     def get_numerical_param_grad(self, layer, input, get_loss, perturb_eps):
-      return []
+        return []

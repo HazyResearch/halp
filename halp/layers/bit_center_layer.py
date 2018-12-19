@@ -164,7 +164,14 @@ class BitCenterLayer(BitCenterModule):
         if self.bias is not None:
             init.zeros_(self.bias_delta)
 
-    def setup_cache(self, input):
+    def setup_cache(self, input_all):
+        if isinstance(input_all, list) or isinstance(input_all, tuple):
+            # in case there are multiple input to this layer
+            return [self.setup_cache_single(x) for x in input_all]
+        else:
+            return self.setup_cache_single(input_all)
+
+    def setup_cache_single(self, input):
         # the cache is set up when the first minibatch forward is done.
         # here we assume the first dimension of input blob indicates the size of minibatch
         if len(list(input.size())) == 0:
@@ -186,6 +193,14 @@ class BitCenterLayer(BitCenterModule):
             cache = cache.cuda()
         return cache
 
+    def get_input_grad_for_test(self, input):
+        # input is the grad with respect to input here
+        if isinstance(self.input_cache, list) or isinstance(self.input_cache, tuple):
+            # if there are multiple input, we will need to test all the grad
+            self.input_grad_for_test = input[:len(self.input_cache)]
+        else:
+            self.input_grad_for_test = input[0]
+
     def update_grad_output_cache(self, self1, input, output):
         # use duplicated self to adapt to the pytorch API requirement
         # as this is a class member function.
@@ -204,19 +219,32 @@ class BitCenterLayer(BitCenterModule):
                         output[0].cpu())
                 self.grad_cache_iter = (self.grad_cache_iter + output[0].size(
                     0)) % self.n_train_sample
-        self.input_grad_for_test = input[0]
+        self.get_input_grad_for_test(input)
+
 
     def update_input_cache(self, input):
         if self.do_offset:
             if self.on_site_compute:
-                self.input_cache[0:input.size()[0]].data.copy_(input)
+                if isinstance(input, list) or isinstance(input, tuple):
+                    for cache, val in zip(self.input_cache, input):
+                        cache[0:input.size()[0]].data.copy_(val)
+                else:
+                    self.input_cache[0:input.size()[0]].data.copy_(input)
                 self.cache_iter = 0
             else:
-                self.input_cache[self.cache_iter:min(
-                    self.cache_iter +
-                    input.size()[0], self.n_train_sample)].data.copy_(input)
-                self.cache_iter = (
-                    self.cache_iter + input.size(0)) % self.n_train_sample
+                if isinstance(input, list) or isinstance(input, tuple):
+                    for cache, val in zip(self.input_cache, input):
+                        cache[self.cache_iter:min(self.cache_iter +
+                                                  val.size()[0], self.
+                                                  n_train_sample)].data.copy_(val)
+                    self.cache_iter = (
+                        self.cache_iter + input[0].size(0)) % self.n_train_sample
+                else:
+                    self.input_cache[self.cache_iter:min(
+                        self.cache_iter +
+                        input.size()[0], self.n_train_sample)].data.copy_(input)
+                    self.cache_iter = (
+                        self.cache_iter + input.size(0)) % self.n_train_sample
 
     def check_or_setup_input_cache(self, input):
         if self.input_cache is None:
@@ -231,19 +259,34 @@ class BitCenterLayer(BitCenterModule):
     def get_input_cache_grad_cache(self, input):
         if self.on_site_compute:
             assert self.grad_cache_iter == 0 or self.cache_iter == 0
-        input_lp = self.input_cache[self.cache_iter:(
-            self.cache_iter + input.size(0))].cuda()
-        grad_output_lp = \
-            self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
+        if isinstance(input, list) or isinstance(input, tuple):
+            # if input is a list for this layer, the retrieved cache value should also be a list
+            assert isinstance(self.input_cache, list) or isinstance(
+                self.input_cache, tuple)
+            input_lp = [
+                x[self.cache_iter:(self.cache_iter + y.size(0))].cuda()
+                for x, y in zip(self.input_cache, input)
+            ]
+            grad_output_lp = \
+                self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input[0].size(0))].cuda()
+        else:
+            input_lp = self.input_cache[self.cache_iter:(
+                self.cache_iter + input.size(0))].cuda()
+            grad_output_lp = \
+                self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         return input_lp, grad_output_lp
 
     def increment_cache_iter(self, input):
         # note for on_site_compute mode, you should always keep cache iter at 0
         if not self.on_site_compute:
+            if isinstance(input, list) or isinstance(input, tuple):
+                n_input_sample = input[0].size(0)
+            else:
+                n_input_sample = input.size(0)
             self.cache_iter = (
-                self.cache_iter + input.size(0)) % self.n_train_sample
+                self.cache_iter + n_input_sample) % self.n_train_sample
             self.grad_cache_iter = (
-                self.grad_cache_iter + input.size(0)) % self.n_train_sample
+                self.grad_cache_iter + n_input_sample) % self.n_train_sample
 
     def forward_fp(self, input):
         self.check_or_setup_input_cache(input)
