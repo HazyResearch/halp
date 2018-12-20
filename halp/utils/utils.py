@@ -88,7 +88,7 @@ def set_seed(seed):
 
 def copy_layer_weights(layer_old, layer_new):
     layer_new.weight.data.copy_(layer_old.weight)
-    if layer_new.bias is not None:
+    if hasattr(layer_new, "bias") and hasattr(layer_old, "bias") and (layer_new.bias is not None):
         layer_new.bias.data.copy_(layer_old.bias)
     # copy bn stats
     if hasattr(layer_new, 'running_mean'):
@@ -101,6 +101,8 @@ def copy_layer_weights(layer_old, layer_new):
 def copy_model_weights(model_old, model_new):
     # model old is the native pytorch model, while the model_new is a model using our implementation
     for name, param in model_old.named_parameters():
+        if name not in model_new.state_dict().keys():
+            continue
         old_param = get_recur_attr(model_old, name.split("."))
         new_param = get_recur_attr(model_new, name.split("."))
         new_param.data.copy_(old_param.data)

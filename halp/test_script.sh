@@ -12,6 +12,7 @@ python -m unittest layers/embedding_test.py
 python -m unittest models/logistic_regression_test.py
 python -m unittest models/lenet_test.py
 python -m unittest models/resnet_test.py
+python -m unittest models/lstm_test.py
 python -m unittest utils/utils.py
 
 

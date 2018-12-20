@@ -77,21 +77,23 @@ class HalpTest(object):
         return net
 
 
-def assert_model_grad_equal(model1, model2, model2_is_bc=False):
-    # we assume all model1's params can be found in model2
-    for name, param in model1.named_parameters():
-        if name.endswith("_lp") or name.endswith("_delta"):
-            continue
-        old_param = get_recur_attr(model1, name.split("."))
-        new_param = get_recur_attr(model2, name.split("."))
-        if old_param.requires_grad and new_param.requires_grad:
-            if model2_is_bc:
-                new_param_delta = get_recur_attr(model2, (name + "_delta").split("."))
-                np.testing.assert_allclose(old_param.grad.data.cpu().numpy(),
-                    new_param.grad.data.cpu().numpy() + new_param_delta.grad.data.cpu().numpy())
-            else:
-                np.testing.assert_allclose(old_param.grad.data.cpu().numpy(),
-                    new_param.grad.data.cpu().numpy())
+# def assert_model_grad_equal(model1, model2, model2_is_bc=False):
+#     # we assume all model1's params can be found in model2
+#     for name, param in model1.named_parameters():
+#         if name.endswith("_lp") or name.endswith("_delta"):
+#             continue
+#         if name not in model2.state_dict().keys():
+#             continue
+#         old_param = get_recur_attr(model1, name.split("."))
+#         new_param = get_recur_attr(model2, name.split("."))
+#         if old_param.requires_grad and new_param.requires_grad:
+#             if model2_is_bc:
+#                 new_param_delta = get_recur_attr(model2, (name + "_delta").split("."))
+#                 np.testing.assert_allclose(old_param.grad.data.cpu().numpy(),
+#                     new_param.grad.data.cpu().numpy() + new_param_delta.grad.data.cpu().numpy())
+#             else:
+#                 np.testing.assert_allclose(old_param.grad.data.cpu().numpy(),
+#                     new_param.grad.data.cpu().numpy())
         
         
 

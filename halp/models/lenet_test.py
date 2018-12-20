@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch.autograd import Variable
-from halp.utils.test_utils import assert_model_grad_equal
+# from halp.utils.test_utils import assert_model_grad_equal
 from halp.utils.utils import single_to_half_det, single_to_half_stoc, void_cast_func
 from halp.utils.utils import copy_model_weights, set_seed
 from unittest import TestCase
