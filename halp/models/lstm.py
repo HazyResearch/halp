@@ -2,11 +2,12 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.parameter import Parameter
 from torch.autograd import Variable
 from halp.utils.utils import single_to_half_det, single_to_half_stoc
 from halp.utils.utils import copy_layer_weights, copy_module_weights
 from halp.utils.utils import void_cast_func, get_recur_attr
-from halp.layers.bit_center_layer import BitCenterModule
+from halp.layers.bit_center_layer import BitCenterModule, BitCenterModuleList
 from halp.layers.linear_layer import BitCenterLinear
 from halp.layers.cross_entropy import BitCenterCrossEntropy
 from halp.layers.sigmoid_layer import BitCenterSigmoid
@@ -23,7 +24,6 @@ class BitCenterLSTMCell(BitCenterModule, nn.LSTMCell):
     '''
     Implementation of the LSTM cell
     '''
-
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -31,7 +31,7 @@ class BitCenterLSTMCell(BitCenterModule, nn.LSTMCell):
                  cast_func=void_cast_func,
                  n_train_sample=1):
         BitCenterModule.__init__(self)
-        # nn.LSTMCell(input_size=input_size, hidden_size=hidden_size, bias=True)
+        # nn.LSTMCell(input_size=input_size, hidden_size=hidden_size, bias=bias)
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -51,6 +51,32 @@ class BitCenterLSTMCell(BitCenterModule, nn.LSTMCell):
             bias=self.bias,
             cast_func=cast_func,
             n_train_sample=n_train_sample)
+        # sync the parameter name with the standard parameters
+        self.weight_ih = Parameter(self.input_linear.weight.clone(), requires_grad=True)
+        self.weight_hh = Parameter(self.hidden_linear.weight.clone(), requires_grad=True)
+        self.weight_ih_lp = Parameter(self.input_linear.weight_lp.clone(), requires_grad=True)
+        self.weight_hh_lp = Parameter(self.hidden_linear.weight_lp.clone(), requires_grad=True)
+        self.weight_ih_delta = Parameter(self.input_linear.weight_delta.clone(), requires_grad=True)
+        self.weight_hh_delta = Parameter(self.hidden_linear.weight_delta.clone(), requires_grad=True)
+        self.input_linear.weight = self.weight_ih
+        self.hidden_linear.weight = self.weight_hh
+        self.input_linear.weight_lp = self.weight_ih_lp
+        self.hidden_linear.weight_lp = self.weight_hh_lp
+        self.input_linear.weight_delta = self.weight_ih_delta
+        self.hidden_linear.weight_delta = self.weight_hh_delta
+        if self.bias:
+            self.bias_ih = Parameter(self.input_linear.bias.clone(), requires_grad=True)
+            self.bias_hh = Parameter(self.hidden_linear.bias.clone(), requires_grad=True)
+            self.bias_ih_lp = Parameter(self.input_linear.bias_lp.clone(), requires_grad=True)
+            self.bias_hh_lp = Parameter(self.hidden_linear.bias_lp.clone(), requires_grad=True)
+            self.bias_ih_delta = Parameter(self.input_linear.bias_delta.clone(), requires_grad=True)
+            self.bias_hh_delta = Parameter(self.hidden_linear.bias_delta.clone(), requires_grad=True)
+            self.input_linear.bias = self.bias_ih
+            self.hidden_linear.bias = self.bias_hh
+            self.input_linear.bias_lp = self.bias_ih_lp
+            self.hidden_linear.bias_lp = self.bias_hh_lp
+            self.input_linear.bias_delta = self.bias_ih_delta
+            self.hidden_linear.bias_delta = self.bias_hh_delta
 
         # for the naming of the symbols like i, f, g, o, please refer to
         # https://pytorch.org/docs/stable/nn.html#torch.nn.LSTMCell
@@ -74,7 +100,7 @@ class BitCenterLSTMCell(BitCenterModule, nn.LSTMCell):
             cast_func=self.cast_func, n_train_sample=self.n_train_sample)
 
     def forward(self, x, state):
-        c, h = state
+        h, c = state
         trans_input = self.input_linear(x)
         trans_hidden = self.hidden_linear(h)
 
@@ -87,30 +113,25 @@ class BitCenterLSTMCell(BitCenterModule, nn.LSTMCell):
         c_prime = self.f_c_mult(f, c) + self.i_g_mult(i, g)
         c_prime_act = self.c_prime_activation(c_prime)
         h_prime = self.o_c_prime_mult(o, c_prime_act)
-
         return (h_prime, c_prime)
 
 def copy_lstm_cell_weights(src, tar):
     # source is bitcenter LSTM cell, tar is the conventional
-    tar.weight_ih.data.copy_(src.input_linear.weight)
-    tar.weight_hh.data.copy_(src.hidden_linear.weight)
-    tar.bias_ih.data.copy_(src.input_linear.bias)
-    tar.bias_hh.data.copy_(src.hidden_linear.bias)
+    tar_state_dict = tar.state_dict()
+    for name_src, p_src in src.named_parameters():
+        # print(name_src, name_tar)
+        if name_src in tar_state_dict.keys():
+            tar_state_dict[name_src].data.copy_(p_src.data)
     return tar
 
-def copy_lstm_weights_to_non_bc_lstm_cell(src, tar):
+
+def copy_lstm_weights_to_lstm_cell(src, tar):
     tar.weight_ih.data.copy_(src.weight_ih_l0)
     tar.weight_hh.data.copy_(src.weight_hh_l0)
     tar.bias_ih.data.copy_(src.bias_ih_l0)
     tar.bias_hh.data.copy_(src.bias_hh_l0)
     return tar
 
-def copy_lstm_weights_to_bc_lstm_cell(src, tar):
-    tar.input_linear.weight.data.copy_(src.weight_ih_l0)
-    tar.hidden_linear.weight.data.copy_(src.weight_hh_l0)
-    tar.input_linear.bias.data.copy_(src.bias_ih_l0)
-    tar.hidden_linear.bias.data.copy_(src.bias_hh_l0)
-    return tar
 
 class LSTMTagger(nn.Module):
 
@@ -118,14 +139,14 @@ class LSTMTagger(nn.Module):
         super(LSTMTagger, self).__init__()
         self.hidden_dim = hidden_dim
 
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
         self.lstm = nn.LSTM(embedding_dim, hidden_dim)
 
         # The linear layer that maps from hidden state space to tag space
-        self.hidden2tag = nn.Linear(hidden_dim, tagset_size)
+        self.linear = nn.Linear(hidden_dim, tagset_size)
         # self.hidden = self.init_hidden()
 
     def init_hidden(self, sentence):
@@ -135,20 +156,17 @@ class LSTMTagger(nn.Module):
         # The axes semantics are (num_layers, minibatch_size, hidden_dim)
         batch_size = sentence.size(1)
         return (torch.zeros(1, batch_size, self.hidden_dim, 
-                dtype=self.word_embeddings.weight.dtype,
-                device=self.word_embeddings.weight.device),
+                dtype=self.embedding.weight.dtype,
+                device=self.embedding.weight.device),
                 torch.zeros(1, batch_size, self.hidden_dim,
-                dtype=self.word_embeddings.weight.dtype,
-                device=self.word_embeddings.weight.device))
+                dtype=self.embedding.weight.dtype,
+                device=self.embedding.weight.device))
 
     def forward(self, sentence):
         self.hidden = self.init_hidden(sentence)
-        embeds = self.word_embeddings(sentence)
+        embeds = self.embedding(sentence)
         lstm_out, self.hidden = self.lstm(embeds, self.hidden)
-        # lstm_out, self.hidden = self.lstm(
-        #     embeds.view(len(sentence), 1, -1), self.hidden)
-        tag_space = self.hidden2tag(lstm_out.view(-1, self.hidden_dim))
-        # tag_scores = F.log_softmax(tag_space, dim=1)
+        tag_space = self.linear(lstm_out.view(-1, self.hidden_dim))
         return tag_space
 
 
@@ -160,34 +178,45 @@ class BitCenterLSTMTagger(BitCenterModule):
                  cast_func=void_cast_func,
                  n_classes=10,
                  n_train_sample=1,
+                 seq_length=1,
                  dtype="bc"):
         BitCenterModule.__init__(self)
         self.cast_func = cast_func
         self.n_train_sample = n_train_sample
         self.n_classes = n_classes
         self.dtype = dtype
+        self.seq_length = seq_length
         self.embedding = BitCenterEmbedding(
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
             cast_func=cast_func,
             n_train_sample=n_train_sample)
 
-        self.lstm_cell = BitCenterLSTMCell(
-            input_size=embedding_dim,
-            hidden_size=hidden_size,
-            bias=True,
-            cast_func=cast_func,
-            n_train_sample=n_train_sample)
+        self.lstm_cell = BitCenterModuleList([])
+        # we use multiple lstm cells to easily 
+        # utilize the caching features of each cell for seq of length > 1
+        for i in range(seq_length):
+            self.lstm_cell.append(
+                BitCenterLSTMCell(
+                    input_size=embedding_dim,
+                    hidden_size=hidden_size,
+                    bias=True,
+                    cast_func=cast_func,
+                    n_train_sample=n_train_sample))
 
+        # note here we need to make n_train_sample = n sample * seq length
+        # this is because BitCenterLinear can only process 2D input. We need
+        # to set n_train_sample like this to make sure the cache is in the
+        # right shape.
         self.linear = BitCenterLinear(
             in_features=hidden_size,
             out_features=n_classes,
             bias=True,
             cast_func=cast_func,
-            n_train_sample=n_train_sample)
+            n_train_sample=n_train_sample * self.seq_length)
 
         self.criterion = BitCenterCrossEntropy(
-            cast_func=cast_func, n_train_sample=n_train_sample)
+            cast_func=cast_func, n_train_sample=n_train_sample * self.seq_length)
 
         if dtype == "bc":
             pass
@@ -197,10 +226,12 @@ class BitCenterLSTMTagger(BitCenterModule):
                 nn.Embedding(
                     num_embeddings=num_embeddings,
                     embedding_dim=embedding_dim))
-            self.lstm_cell = copy_lstm_cell_weights(
-                self.lstm_cell,
-                nn.LSTMCell(
-                    embedding_dim, hidden_size, bias=self.lstm_cell.bias))
+
+            for i in range(seq_length):
+                self.lstm_cell[i] = copy_lstm_cell_weights(
+                    self.lstm_cell[i],
+                    nn.LSTMCell(
+                        embedding_dim, hidden_size, bias=self.lstm_cell[i].bias))
             self.linear = copy_layer_weights(
                 self.linear,
                 nn.Linear(in_features=hidden_size, out_features=n_classes))
@@ -213,6 +244,40 @@ class BitCenterLSTMTagger(BitCenterModule):
                         child.half()
         else:
             raise Exception(dtype + " is not supported in LeNet!")
+        # all lstm cells using the same set of parameter tensors
+        self.unify_lstm_cell_param()
+
+    def unify_lstm_cell_param(self):
+        for i in range(1, len(self.lstm_cell)):
+            self.lstm_cell[i].weight_ih = self.lstm_cell[0].weight_ih 
+            self.lstm_cell[i].weight_hh = self.lstm_cell[0].weight_hh
+            if self.dtype == "bc":
+                self.lstm_cell[i].weight_ih_lp = self.lstm_cell[0].weight_ih_lp 
+                self.lstm_cell[i].weight_hh_lp = self.lstm_cell[0].weight_hh_lp
+                self.lstm_cell[i].weight_ih_delta = self.lstm_cell[0].weight_ih_delta 
+                self.lstm_cell[i].weight_hh_delta = self.lstm_cell[0].weight_hh_delta
+                self.lstm_cell[i].input_linear.weight = self.lstm_cell[0].weight_ih 
+                self.lstm_cell[i].hidden_linear.weight = self.lstm_cell[0].weight_hh
+                self.lstm_cell[i].input_linear.weight_lp = self.lstm_cell[0].weight_ih_lp
+                self.lstm_cell[i].hidden_linear.weight_lp = self.lstm_cell[0].weight_hh_lp
+                self.lstm_cell[i].input_linear.weight_delta = self.lstm_cell[0].weight_ih_delta 
+                self.lstm_cell[i].hidden_linear.weight_delta = self.lstm_cell[0].weight_hh_delta
+            if self.lstm_cell[i].bias:
+                self.lstm_cell[i].bias_ih = self.lstm_cell[0].bias_ih
+                self.lstm_cell[i].bias_hh = self.lstm_cell[0].bias_hh
+                if self.dtype == "bc":
+                    self.lstm_cell[i].bias_ih_lp = self.lstm_cell[0].bias_ih_lp
+                    self.lstm_cell[i].bias_hh_lp = self.lstm_cell[0].bias_hh_lp
+                    self.lstm_cell[i].bias_ih_delta = self.lstm_cell[0].bias_ih_delta
+                    self.lstm_cell[i].bias_hh_delta = self.lstm_cell[0].bias_hh_delta
+                    self.lstm_cell[i].input_linear.bias = self.lstm_cell[0].bias_ih 
+                    self.lstm_cell[i].hidden_linear.bias = self.lstm_cell[0].bias_hh
+                    self.lstm_cell[i].input_linear.bias_lp = self.lstm_cell[0].bias_ih_lp 
+                    self.lstm_cell[i].hidden_linear.bias_lp = self.lstm_cell[0].bias_hh_lp
+                    self.lstm_cell[i].input_linear.bias_delta = self.lstm_cell[0].bias_ih_delta 
+                    self.lstm_cell[i].hidden_linear.bias_delta = self.lstm_cell[0].bias_hh_delta
+        # for name, p in self.named_parameters():
+        #     print("check final ", name)
 
     def init_hidden(self, x):
         # Before we've done anything, we dont have any hidden state.
@@ -220,29 +285,29 @@ class BitCenterLSTMTagger(BitCenterModule):
         # why they have this dimensionality.
         # The axes semantics are (num_layers, minibatch_size, hidden_dim)
         batch_size = x.size(1)
-        seq_length = x.size(0)
         dtype = self.embedding.weight.dtype
         device = self.embedding.weight.device
-        hidden_dim = self.lstm_cell.hidden_size
-        return (torch.zeros(seq_length + 1, batch_size, hidden_dim, dtype=dtype, device=device),
-                torch.zeros(seq_length + 1, batch_size, hidden_dim, dtype=dtype, device=device))
+        hidden_dim = self.lstm_cell[0].hidden_size
+        return (torch.zeros(batch_size, hidden_dim, dtype=dtype, device=device),
+                torch.zeros(batch_size, hidden_dim, dtype=dtype, device=device))
 
     def forward(self, x, y, test=False):
         # we assume the first dimension corresponds to steps
         # The second dimension corresponds to sample index
-        (c, h) = self.init_hidden(x)
-        out = self.embedding(x)
+        (h, c) = self.init_hidden(x)
+        out = self.embedding(x)        
+        h_list = []
+        assert out.size(0) == self.seq_length
         for i in range(out.size(0)):
-            state = self.lstm_cell(out[i, :, :], (c[i], h[i]))
-            c[i + 1].data.copy_(state[0])
-            h[i + 1].data.copy_(state[1])
-        out = self.linear(c[1:])
+            state = self.lstm_cell[i](out[i], (h, c))
+            h, c = state
+            h_list.append(h)
+        h_seq = torch.stack(h_list, dim=0)
+        out = self.linear(h_seq.view(-1, h.size(-1)))
         self.output = out
-        out = out.view(-1, out.size(-1))
         if test:
             return out
         else:
-            # print(out.size(), y.size())
             self.loss = self.criterion(out, y)
             if isinstance(self.criterion, BitCenterCrossEntropy) \
                 and self.criterion.do_offset == False:

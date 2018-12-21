@@ -11,7 +11,7 @@ from halp.models.resnet import BasicBlock, BitCenterBasicBlock
 from halp.models.model_test import BitCenterModelTest
 from halp.models.lstm import BitCenterLSTMTagger, LSTMTagger
 from halp.models.lstm import copy_lstm_cell_weights
-from halp.models.lstm import copy_lstm_weights_to_non_bc_lstm_cell, copy_lstm_weights_to_bc_lstm_cell
+from halp.models.lstm import copy_lstm_weights_to_lstm_cell
 
 
 class LSTMTaggerTest(BitCenterModelTest, TestCase):
@@ -32,7 +32,7 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
         config["embedding_dim"] = 15
         config["num_embeddings"] = 20
         config["hidden_dim"] = 5
-        config["seq_length"] = 3
+        config["seq_length"] = 5
         return config
 
     def get_models(self, n_minibatch, batch_size, n_classes, embedding_dim,
@@ -53,8 +53,8 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
             n_classes=n_classes,
             dtype="fp").cuda().double()
         copy_model_weights(native_model, fp_model)
-        copy_lstm_weights_to_non_bc_lstm_cell(native_model.lstm,
-                                              fp_model.lstm_cell)
+        copy_lstm_weights_to_lstm_cell(native_model.lstm,
+                                              fp_model.lstm_cell[0])
         lp_model = BitCenterLSTMTagger(
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
@@ -65,8 +65,8 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
             n_classes=n_classes,
             dtype="lp").cuda().double()
         copy_model_weights(native_model, lp_model)
-        copy_lstm_weights_to_non_bc_lstm_cell(native_model.lstm,
-                                          lp_model.lstm_cell)
+        copy_lstm_weights_to_lstm_cell(native_model.lstm,
+                                          lp_model.lstm_cell[0])
         bc_model = BitCenterLSTMTagger(
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
@@ -77,8 +77,8 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
             n_classes=n_classes,
             dtype="bc").double()
         copy_model_weights(native_model, bc_model)
-        copy_lstm_weights_to_bc_lstm_cell(native_model.lstm,
-                                          bc_model.lstm_cell)
+        copy_lstm_weights_to_lstm_cell(native_model.lstm,
+                                          bc_model.lstm_cell[0])
         return native_model, fp_model, lp_model, bc_model
 
     def get_inputs(self, n_minibatch, batch_size, n_classes, embedding_dim,
@@ -95,18 +95,19 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
 
     def check_layer_status(self, bc_model, do_offset=True):
         assert bc_model.embedding.do_offset == do_offset
-        assert bc_model.lstm_cell.input_linear.do_offset == do_offset
-        assert bc_model.lstm_cell.hidden_linear.do_offset == do_offset
-        assert bc_model.lstm_cell.hidden_linear.do_offset == do_offset
-        assert bc_model.lstm_cell.hidden_linear.do_offset == do_offset
-        assert bc_model.lstm_cell.i_activation.do_offset == do_offset
-        assert bc_model.lstm_cell.f_activation.do_offset == do_offset
-        assert bc_model.lstm_cell.g_activation.do_offset == do_offset
-        assert bc_model.lstm_cell.o_activation.do_offset == do_offset
-        assert bc_model.lstm_cell.f_c_mult.do_offset == do_offset
-        assert bc_model.lstm_cell.i_g_mult.do_offset == do_offset
-        assert bc_model.lstm_cell.c_prime_activation.do_offset == do_offset
-        assert bc_model.lstm_cell.o_c_prime_mult.do_offset == do_offset
+        for i in range(bc_model.seq_length):
+            assert bc_model.lstm_cell[i].input_linear.do_offset == do_offset
+            assert bc_model.lstm_cell[i].hidden_linear.do_offset == do_offset
+            assert bc_model.lstm_cell[i].hidden_linear.do_offset == do_offset
+            assert bc_model.lstm_cell[i].hidden_linear.do_offset == do_offset
+            assert bc_model.lstm_cell[i].i_activation.do_offset == do_offset
+            assert bc_model.lstm_cell[i].f_activation.do_offset == do_offset
+            assert bc_model.lstm_cell[i].g_activation.do_offset == do_offset
+            assert bc_model.lstm_cell[i].o_activation.do_offset == do_offset
+            assert bc_model.lstm_cell[i].f_c_mult.do_offset == do_offset
+            assert bc_model.lstm_cell[i].i_g_mult.do_offset == do_offset
+            assert bc_model.lstm_cell[i].c_prime_activation.do_offset == do_offset
+            assert bc_model.lstm_cell[i].o_c_prime_mult.do_offset == do_offset
         assert bc_model.linear.do_offset == do_offset
         assert bc_model.criterion.do_offset == do_offset
 
@@ -115,9 +116,16 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
         for name, param in model1.named_parameters():
             if name.endswith("_lp") or name.endswith("_delta"):
                 continue
-            if name not in model2.state_dict().keys():
-                continue
             old_param = get_recur_attr(model1, name.split("."))
+            if name not in model2.state_dict().keys():
+                # this is for asserting the same gradient from native model and our model.
+                # in the native model we have lstm while in our model, we only have lstm cell
+                if "ih_l0" in name:
+                    name = name.replace("ih_l0", "ih").replace("lstm.", "lstm_cell.0.")
+                elif "hh_l0" in name:
+                    name = name.replace("hh_l0", "hh").replace("lstm.", "lstm_cell.0.")
+                else:
+                    continue
             new_param = get_recur_attr(model2, name.split("."))
             if old_param.requires_grad and new_param.requires_grad:
                 if model2_is_bc:
