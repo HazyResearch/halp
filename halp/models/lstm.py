@@ -185,7 +185,7 @@ class BitCenterLSTMTagger(BitCenterModule):
         self.n_train_sample = n_train_sample
         self.n_classes = n_classes
         self.dtype = dtype
-        self.seq_length = seq_length
+        self.seq_length = seq_length # this is the maximum length the model can handle
         self.embedding = BitCenterEmbedding(
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
@@ -297,13 +297,19 @@ class BitCenterLSTMTagger(BitCenterModule):
         (h, c) = self.init_hidden(x)
         out = self.embedding(x)        
         h_list = []
-        assert out.size(0) == self.seq_length
+        # assert out.size(0) == self.seq_length
+        # note seq_length is the maximum seq length in the dataset
         for i in range(out.size(0)):
             state = self.lstm_cell[i](out[i], (h, c))
             h, c = state
             h_list.append(h)
         h_seq = torch.stack(h_list, dim=0)
-        out = self.linear(h_seq.view(-1, h.size(-1)))
+        h_seq = h_seq.view(-1, h.size(-1))
+        # print(h_seq.shape, y.shape)
+        y = y.view(-1)
+        h_seq = h_seq[y != -1]
+        y = y[y != -1]
+        out = self.linear(h_seq)
         self.output = out
         if test:
             return out
@@ -318,3 +324,20 @@ class BitCenterLSTMTagger(BitCenterModule):
         output = self.forward(x, y=None, test=True)
         pred = output.data.cpu().numpy().argmax(axis=1)
         return pred, output
+
+
+def LSTM(num_embeddings,
+         cast_func=void_cast_func,
+         n_train_sample=1,
+         seq_length=1,
+         dtype="bc"):
+    return BitCenterLSTMTagger(
+         num_embeddings=num_embeddings,
+         embedding_dim=32,
+         hidden_size=64,
+         cast_func=cast_func,
+         n_classes=12,
+         n_train_sample=n_train_sample,
+         seq_length=seq_length,
+         dtype=dtype)
+

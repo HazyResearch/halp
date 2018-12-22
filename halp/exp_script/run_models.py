@@ -14,8 +14,10 @@ from halp.optim.svrg import SVRG
 from halp.models.logistic_regression import LogisticRegression
 from halp.models.lenet import LeNet
 from halp.models.resnet import ResNet18
+from halp.models.lstm import LSTM
 from halp.utils.mnist_data_utils import get_mnist_data_loader
 from halp.utils.cifar_data_utils import get_cifar10_data_loader
+from halp.utils.postag_data_utils import get_treebank_data_loader
 from halp.utils import utils
 from halp.utils.utils import void_cast_func
 from halp.utils.utils import single_to_half_det, single_to_half_stoc
@@ -24,7 +26,6 @@ from halp.utils.train_utils import train_non_bit_center_optimizer
 from halp.utils.train_utils import train_bit_center_optimizer
 from halp.utils.train_utils import StepLRScheduler, ModelSaver
 from halp.utils.train_utils import load_param_to_model, load_state_to_optimizer
-from halp.utils.mnist_data_utils import get_mnist_data_loader
 from halp.utils.utils import DOUBLE_PREC_DEBUG_EPOCH_LEN
 from halp.utils.utils import LP_DEBUG_EPOCH_LEN
 import logging
@@ -72,10 +73,10 @@ parser.add_argument("--rounding", default="near", type=str,
                     choices=["near", "stoc", "void"],
                     help="Support nearest (near) and stochastic (stoc) rounding.")
 parser.add_argument("--dataset", default="mnist", type=str, 
-                    choices=["mnist", "cifar10"], 
+                    choices=["mnist", "cifar10", "treebank"], 
                     help="The dataset to train on.")
 parser.add_argument("--model", default="logreg", type=str,
-                    choices=["logreg", "lenet", "resnet"],
+                    choices=["logreg", "lenet", "resnet", "lstm"],
                     help="The model used on the given dataset.")
 parser.add_argument("--resnet-save-ckpt", action="store_true", 
                     help="save check points for resnet18")
@@ -112,6 +113,11 @@ elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size, args=args)
     assert (args.only_even_class == False) or (args.only_odd_class == False)
+elif args.dataset == "treebank":
+    train_loader, val_loader, input_shape, n_train_sample, max_seq_length, num_embeddings = \
+        get_treebank_data_loader(args=args)
+else:
+    raise Exception(args.dataset + " not supported.")
 
 # TODO consider remove debug test flag not all the numerical test are done 
 # via DOUBLE_PREC_DEBUG flag
@@ -170,6 +176,13 @@ elif args.model == "resnet":
         dtype=args.dtype,
         fine_tune=args.resnet_fine_tune,
         num_classes=args.n_classes)
+elif args.model == "lstm":
+    model = LSTM(
+        num_embeddings=num_embeddings,
+        cast_func=args.cast_func,
+        seq_length=max_seq_length,
+        n_train_sample=n_train_sample,
+        dtype=args.dtype)
 else:
     raise Exception(args.model + " is currently not supported!")
 

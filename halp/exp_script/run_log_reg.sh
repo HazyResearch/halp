@@ -206,3 +206,8 @@ python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --see
 
 # python exp_script/run_models.py --n-epochs=3 --batch-size=100 -T=600 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --rounding=void --solver='svrg' --cuda --double-debug
 # python exp_script/run_models.py --on-site-compute --n-epochs=3 --batch-size=100 -T=600 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --rounding=void --solver='bc-svrg' --cuda --double-debug | grep loss
+
+
+
+### test lstm running
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda
