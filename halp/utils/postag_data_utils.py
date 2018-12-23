@@ -4,6 +4,7 @@ import numpy as np
 import sys, os
 import torch
 from halp.utils.utils import set_seed
+from halp.utils.utils import DOUBLE_PREC_DEBUG_EPOCH_LEN, LP_DEBUG_EPOCH_LEN
 from torch.utils.data.dataset import Dataset
 import _pickle as cp
 import logging
@@ -188,7 +189,12 @@ def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", a
     # tag_dict = cp.load(data_path + "/tag_dict")
     # word_dict = cp.load(data_path + "/word_dict")
 
-    # train_sentences = train_sentences[:128]
+    if args.double_debug:
+        train_sentences = train_sentences[:(args.batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
+        test_sentences = test_sentences[:(args.batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
+    elif args.float_debug:
+        train_sentences = train_sentences[:(args.batch_size * LP_DEBUG_EPOCH_LEN)]
+        test_sentences = test_sentences[:(args.batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
 
     train_set = TaggingDataset(train_sentences, tag_dict, word_dict)
     test_set = TaggingDataset(test_sentences, tag_dict, word_dict)

@@ -280,8 +280,6 @@ class BitCenterLSTMTagger(BitCenterModule):
                     self.lstm_cell[i].hidden_linear.bias_lp = self.lstm_cell[0].bias_hh_lp
                     self.lstm_cell[i].input_linear.bias_delta = self.lstm_cell[0].bias_ih_delta 
                     self.lstm_cell[i].hidden_linear.bias_delta = self.lstm_cell[0].bias_hh_delta
-        # for name, p in self.named_parameters():
-        #     print("check final ", name)
 
     def init_hidden(self, x):
         # Before we've done anything, we dont have any hidden state.
@@ -302,6 +300,7 @@ class BitCenterLSTMTagger(BitCenterModule):
     def forward(self, x, y, test=False):
         # we assume the first dimension corresponds to steps
         # The second dimension corresponds to sample index
+        x = x.type(torch.long)
         (h, c) = self.init_hidden(x)
         out = self.embedding(x)        
         h_list = []

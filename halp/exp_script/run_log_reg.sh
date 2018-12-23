@@ -173,41 +173,75 @@
 # echo "svrg done"
 
 
-## eager mode test on logreg
-python run_models.py --n-epochs=3 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
-python run_models.py --n-epochs=3 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug --on-site-compute
+# ## eager mode test on logreg
+# python run_models.py --n-epochs=3 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
+# python run_models.py --n-epochs=3 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug --on-site-compute
 
-## eager mode test on resnet
-cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 --on-site-compute
-cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1
-
-
-
-
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --on-site-compute --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
-
-
-
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='svrg' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --on-site-compute --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
-python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
+# ## eager mode test on resnet
+# cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1 --on-site-compute
+# cd /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script && python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --double-debug --n-epochs=3 --batch-size=32 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --resnet-load-ckpt --resnet-load-ckpt-epoch-id=300 --resnet-save-ckpt-path=/dfs/scratch0/zjian/floating_halp/exp_res/resnet_weight_saving_nov_30_backup/opt_lp-sgd_momentum_0.9_lr_0.1_l2_reg_0.0005_seed_1
 
 
 
 
-# printf "\n\n\n compare svrg and bc svrg results in double model. The following 2 run should generate almost the same test loss and accuracy\n"
-# python exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --double-debug --on-site-compute | grep loss
-# python exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --double-debug | grep loss
-
-
-# python exp_script/run_models.py --n-epochs=3 --batch-size=100 -T=600 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --rounding=void --solver='svrg' --cuda --double-debug
-# python exp_script/run_models.py --on-site-compute --n-epochs=3 --batch-size=100 -T=600 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --rounding=void --solver='bc-svrg' --cuda --double-debug | grep loss
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --on-site-compute --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='void' -T=391 --dataset=mnist --model=logreg --cuda --double-debug
 
 
 
-### test lstm running
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='svrg' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='bc-svrg' --on-site-compute --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
+# python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --seed=1 --n-classes=10  --solver='lp-svrg' --rounding='void' -T=391 --dataset=cifar10 --model=lenet --cuda --double-debug
+
+
+
+
+# # printf "\n\n\n compare svrg and bc svrg results in double model. The following 2 run should generate almost the same test loss and accuracy\n"
+# # python exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=bc-svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --double-debug --on-site-compute | grep loss
+# # python exp_script/run_models.py --n-epochs=2 --batch-size=128 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1  --n-classes=10  --solver=svrg  --rounding=void  -T=391  --dataset=cifar10  --model=resnet  --cuda  --double-debug | grep loss
+
+
+# # python exp_script/run_models.py --n-epochs=3 --batch-size=100 -T=600 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --rounding=void --solver='svrg' --cuda --double-debug
+# # python exp_script/run_models.py --on-site-compute --n-epochs=3 --batch-size=100 -T=600 --reg=0.001 --alpha=0.003 --seed=1 --n-classes=10  --rounding=void --solver='bc-svrg' --cuda --double-debug | grep loss
+
+
+
+# ### test lstm running
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug
+# python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug
+
+printf "\n\n\n lstm double precision test, the svrg based optimizer should produce very similar numbers\n"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "bc svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-svrg  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "lp svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "svrg done"
+
+printf "\n\n\n lstm double precision test, the sgd based optimizer should produce very similar numbers\n"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-sgd  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "bc svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-sgd  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "lp svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=sgd  --rounding=void  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "svrg done"
+
+
+printf "\n\n\n lstm single precision test, the svrg based optimizer should produce roughly similar numbers\n"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "bc svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "lp svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "svrg done"
+
+printf "\n\n\n lstm single precision test, the sgd based optimizer should produce roughly similar numbers\n"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-sgd  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "bc svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-sgd  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "lp svrg done"
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=sgd  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 "
+echo "svrg done"

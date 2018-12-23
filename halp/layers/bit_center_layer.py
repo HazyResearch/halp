@@ -78,7 +78,7 @@ class BitCenterModule(nn.Module):
                         (p.data.type(torch.FloatTensor) + p_delta.data.type(
                             torch.FloatTensor))**2).item()
             else:
-                if self.on_site_compute and p_delta.dtype != torch.DoubleTensor:
+                if self.on_site_compute:
                     param_norm += torch.sum(
                         p.data.type(torch.cuda.FloatTensor)**2).item()
                 else:

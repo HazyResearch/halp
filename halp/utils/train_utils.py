@@ -178,6 +178,16 @@ def get_grad_norm(optimizer, model):
     return math.sqrt(norm)
 
 
+def remove_dummy_classes(pred, Y):
+    # we assume pred is numpy array while Y is pytorch Tensor.
+    # note Y always contains dummy classes while pred does not always.
+    pred = pred.ravel()
+    Y = Y.view(-1)
+    if pred.size == Y.numel():
+        pred = pred[Y.data.cpu().numpy() != -1]
+    Y = Y[Y != -1]
+    return pred, Y
+
 def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp", args=None):
     model.eval()
     correct_cnt = 0
@@ -186,24 +196,17 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp", args=None):
     for i, (X, Y) in enumerate(val_loader):
         if use_cuda:
             X, Y = X.cuda(), Y.cuda()
-        if dtype == "lp":
+        if dtype == "lp" and (X.dtype != torch.long):
             X = model.cast_func(X)
         # if len(list(X.size())) != 2:
         #     X = X.view(X.size(0), -1)
-        if args.double_debug:
+        if args.double_debug and (X.dtype != torch.long):
             X = X.double()
         # if model.fine_tune:
         #     X = model.cast_func(X)
         pred, output = model.predict(X)
-        # print(pred.shape, Y.size(), Y.dtype, Y != -1)
-
-        # labels -1 is typically dummy class. We use it
-        # to deal with the variable length case for LSTM.
-        pred = pred.ravel()
-        Y = Y.view(-1)
-        pred = pred[Y.data.cpu().numpy() != -1]
-        output = output[Y != -1]
-        Y = Y[Y != -1]
+        output = output[Y.view(-1) != -1]
+        pred, Y = remove_dummy_classes(pred, Y)
 
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
@@ -245,17 +248,20 @@ def train_non_bit_center_optimizer(model,
             #     break
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
-            if dtype == "lp":
+            if dtype == "lp" and (X.dtype != torch.long):
                 X = optimizer.cast_func(X)
             if dtype == "bc":
                 raise Exception("This function can only run non-bc optimizers")
             optimizer.zero_grad()
-            if args.double_debug:
+            if args.double_debug and (X.dtype != torch.long):
                 X = X.double()
             train_loss = model(X, Y)
             train_pred = model.output.data.cpu().numpy().argmax(axis=1)
-            train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
-                Y.size(0))
+            # we use Y_dup to make sure the closure function use the 
+            # Y with the original shape
+            train_pred, Y_dup = remove_dummy_classes(train_pred, Y.clone())
+            train_acc = np.sum(train_pred == Y_dup.data.cpu().numpy()) / float(
+                Y_dup.size(0))
             train_loss.backward()
 
             if optimizer.__class__.__name__ == "SVRG":
@@ -264,19 +270,18 @@ def train_non_bit_center_optimizer(model,
                     if use_cuda:
                         data = data.cuda()
                         target = target.cuda()
-                    if dtype == "lp":
+                    if dtype == "lp" and (data.dtype != torch.long):
                         data = optimizer.cast_func(data)
                     if dtype == "bc":
                         raise Exception(
                             "This function can only run non-bc optimizers")
-                    if args.double_debug:
+                    if args.double_debug and (data.dtype != torch.long):
                         data = data.double()
                     if isinstance(model, ResNet) and (not args.resnet_fine_tune):
                         # for fine tune situation, the batch norm layer
                         # is protected by set to eval mode in the forward
                         # function already.
                         model.fix_running_stat()
-
                     loss = model(data, target)
                     if isinstance(model, ResNet) and (not args.resnet_fine_tune):
                         model.free_running_stat()
@@ -332,7 +337,7 @@ def train_bit_center_optimizer(model,
                     optimizer.zero_grad()
                     if use_cuda:
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
-                    if args.double_debug:
+                    if args.double_debug and (X_fp.dtype != torch.long):
                         X_fp = X_fp.double()
                     # if model.fine_tune:
                     #     X_fp = model.cast_func(X_fp)
@@ -357,7 +362,7 @@ def train_bit_center_optimizer(model,
             optimizer.zero_grad()
             if model.on_site_compute:
                 # in on site mode we need to calculate the offsets on site
-                if args.double_debug:
+                if args.double_debug and (X.dtype != torch.long):
                     X = X.double()
                 model.set_mode(do_offset=True)
                 fp_loss = model(X, Y)
@@ -365,12 +370,15 @@ def train_bit_center_optimizer(model,
                 model.set_mode(do_offset=False)
                 optimizer.zero_grad()
 
-            X = optimizer.cast_func(X).zero_()
-            if args.double_debug:
+            if X.dtype != torch.long:
+                X = optimizer.cast_func(X)
+            X.zero_()
+            if args.double_debug and (X.dtype != torch.long):
                 X = X.double()
 
             train_loss = model(X, Y)
             train_pred = model.output.data.cpu().numpy().argmax(axis=1)
+            train_pred, Y = remove_dummy_classes(train_pred, Y)
             train_acc = np.sum(train_pred == Y.data.cpu().numpy()) / float(
                 Y.size(0))
             train_loss.backward()
