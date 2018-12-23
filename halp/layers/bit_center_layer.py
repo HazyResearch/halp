@@ -209,9 +209,13 @@ class BitCenterLayer(BitCenterModule):
         # in the Python API, e.g. the linear layer
         if self.do_offset:
             if self.on_site_compute:
-                self.grad_output_cache[0:output[0].size()[0]].data.copy_(
-                    output[0])
+                # self.grad_output_cache[0:output[0].size()[0]].data.copy_(
+                #     output[0])
+                self.grad_output_cache = \
+                    self.update_single_cache_on_site_compute(
+                        self.grad_output_cache, output[0])
                 self.grad_cache_iter = 0
+                self.output_size = output[0].size()
             else:
                 self.grad_output_cache[self.grad_cache_iter:min(
                     self.grad_cache_iter +
@@ -221,15 +225,42 @@ class BitCenterLayer(BitCenterModule):
                     0)) % self.n_train_sample
         self.get_input_grad_for_test(input)
 
+    def update_single_cache_on_site_compute(self, cache, input):
+        # For vaiable length input, such as for lstm models,
+        # the cache might need to be larger than the already setup one.
+        # currently we only support this for the on site compute mode.
+        assert self.on_site_compute
+        assert len(cache.size()) == len(input.size())
+        if cache.size() < input.size():
+            cache = self.setup_cache_single(input)
+        # the cache can also be larger than what is currently need
+        # so we need to get the section in cache to update
+        cache_section = cache
+        for i, dim in enumerate(input.size()):
+            cache_section = torch.narrow(cache_section, dim=i, start=0, length=dim)
+        cache_section.data.copy_(input)
+        return cache
+
+    def get_single_cache_on_site_compute(self, cache, input_size):
+        assert self.on_site_compute
+        assert len(cache.size()) == len(input_size)
+        assert cache.size() >= input_size
+        if cache.size() != input_size: 
+            for i, dim in enumerate(input_size):
+                cache = torch.narrow(cache, dim=i, start=0, length=dim)
+        return cache
 
     def update_input_cache(self, input):
         if self.do_offset:
             if self.on_site_compute:
                 if isinstance(input, list) or isinstance(input, tuple):
-                    for cache, val in zip(self.input_cache, input):
-                        cache[0:input.size()[0]].data.copy_(val)
+                    for i, (cache, val) in enumerate(zip(self.input_cache, input)):
+                        self.input_cache[i] = \
+                            self.update_single_cache_on_site_compute(cache, val)
+                        # cache[0:val.size()[0]].data.copy_(val)
                 else:
-                    self.input_cache[0:input.size()[0]].data.copy_(input)
+                    self.input_cache = self.update_single_cache_on_site_compute(self.input_cache, input)
+                    # self.input_cache[0:input.size()[0]].data.copy_(input)
                 self.cache_iter = 0
             else:
                 if isinstance(input, list) or isinstance(input, tuple):
@@ -263,17 +294,33 @@ class BitCenterLayer(BitCenterModule):
             # if input is a list for this layer, the retrieved cache value should also be a list
             assert isinstance(self.input_cache, list) or isinstance(
                 self.input_cache, tuple)
-            input_lp = [
-                x[self.cache_iter:(self.cache_iter + y.size(0))].cuda()
-                for x, y in zip(self.input_cache, input)
-            ]
-            grad_output_lp = \
-                self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input[0].size(0))].cuda()
+            if self.on_site_compute:
+                input_lp = [
+                    self.get_single_cache_on_site_compute(x, y.size()).cuda()
+                    for x, y in zip(self.input_cache, input)
+                ]
+                grad_output_lp = self.get_single_cache_on_site_compute(
+                    self.grad_output_cache, self.output_size).cuda()
+            else:
+                input_lp = [
+                    x[self.cache_iter:(self.cache_iter + y.size(0))].cuda()
+                    for x, y in zip(self.input_cache, input)
+                ]
+                grad_output_lp = \
+                    self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input[0].size(0))].cuda()
         else:
-            input_lp = self.input_cache[self.cache_iter:(
-                self.cache_iter + input.size(0))].cuda()
-            grad_output_lp = \
-                self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
+            if self.on_site_compute:
+                input_lp = self.get_single_cache_on_site_compute(
+                    self.input_cache, input.size()).cuda()
+                # note the output_size member variable is setup when
+                # gradient hook update_grad_output_cache is called
+                grad_output_lp = self.get_single_cache_on_site_compute(
+                    self.grad_output_cache, self.output_size).cuda()
+            else:
+                input_lp = self.input_cache[self.cache_iter:(
+                    self.cache_iter + input.size(0))].cuda()
+                grad_output_lp = \
+                    self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         return input_lp, grad_output_lp
 
     def increment_cache_iter(self, input):

@@ -101,9 +101,13 @@ class BitCenterCrossEntropy(BitCenterLayer):
             # note here grad_output_lp is actually the grad_input offset.
             # This is because we want to utilize the existing infra in bitCenterLayer
             if self.on_site_compute:
-                self.grad_output_cache[0:input[0].size(0)].data.copy_(
-                        input[0])
+                self.grad_output_cache = \
+                    self.update_single_cache_on_site_compute(
+                        self.grad_output_cache, input[0])
+                # self.grad_output_cache[0:input[0].size(0)].data.copy_(
+                #         input[0])
                 self.grad_cache_iter = 0
+                self.output_size = input[0].size()
             else:
                 self.grad_output_cache[self.grad_cache_iter:min(
                     self.grad_cache_iter +
@@ -141,8 +145,12 @@ class BitCenterCrossEntropy(BitCenterLayer):
         self.input_lp = input_lp
         # note here grad_output_lp is actually the grad_input offset.
         # This is because we want to utilize the existing infra in bitCenterLayer
-        grad_output_lp = \
-            self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
+        if self.on_site_compute:
+            grad_output_lp = self.get_single_cache_on_site_compute(
+                self.grad_output_cache, self.output_size).cuda()
+        else:
+            grad_output_lp = \
+                self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         output = self.lp_func(input_delta, input_lp, target, grad_output_lp)
         self.increment_cache_iter(input)
