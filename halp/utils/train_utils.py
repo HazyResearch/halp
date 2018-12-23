@@ -195,6 +195,16 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp", args=None):
         # if model.fine_tune:
         #     X = model.cast_func(X)
         pred, output = model.predict(X)
+        # print(pred.shape, Y.size(), Y.dtype, Y != -1)
+
+        # labels -1 is typically dummy class. We use it
+        # to deal with the variable length case for LSTM.
+        pred = pred.ravel()
+        Y = Y.view(-1)
+        pred = pred[Y.data.cpu().numpy() != -1]
+        output = output[Y != -1]
+        Y = Y[Y != -1]
+
         assert pred.shape == Y.data.cpu().numpy().shape
         correct_cnt += np.sum(pred == Y.data.cpu().numpy())
         cross_entropy_accum += model.criterion(

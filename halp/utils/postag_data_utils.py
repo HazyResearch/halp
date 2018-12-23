@@ -187,13 +187,14 @@ def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", a
     # test_sentences = cp.load(data_path + "/testset")
     # tag_dict = cp.load(data_path + "/tag_dict")
     # word_dict = cp.load(data_path + "/word_dict")
+
+    # train_sentences = train_sentences[:128]
+
     train_set = TaggingDataset(train_sentences, tag_dict, word_dict)
     test_set = TaggingDataset(test_sentences, tag_dict, word_dict)
     train_data_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
     test_data_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn)
-    
-    print("check data length ", len(train_set))
-
+    # print("check data length ", len(train_set))
     return train_data_loader, test_data_loader, None, len(train_set), max_seq_length, num_embeddings
 
 

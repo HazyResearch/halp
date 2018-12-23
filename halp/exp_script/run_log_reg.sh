@@ -210,4 +210,4 @@ python run_models.py --n-epochs=1 --batch-size=128 --reg=5e-4 --alpha=0.01 --see
 
 
 ### test lstm running
-python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0005 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda
+python /dfs/scratch0/zjian/floating_halp/halp/halp/exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=treebank  --model=lstm  --cuda --on-site-compute

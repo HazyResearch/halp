@@ -182,7 +182,8 @@ elif args.model == "lstm":
         cast_func=args.cast_func,
         seq_length=max_seq_length,
         n_train_sample=n_train_sample,
-        dtype=args.dtype)
+        dtype=args.dtype,
+        reg_lambda=args.reg)
 else:
     raise Exception(args.model + " is currently not supported!")
 

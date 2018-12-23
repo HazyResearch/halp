@@ -179,13 +179,17 @@ class BitCenterLSTMTagger(BitCenterModule):
                  n_classes=10,
                  n_train_sample=1,
                  seq_length=1,
+                 reg_lambda=0.0,
                  dtype="bc"):
         BitCenterModule.__init__(self)
         self.cast_func = cast_func
         self.n_train_sample = n_train_sample
         self.n_classes = n_classes
         self.dtype = dtype
+        self.reg_lambda = reg_lambda
         self.seq_length = seq_length # this is the maximum length the model can handle
+        self.do_offset = True
+
         self.embedding = BitCenterEmbedding(
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
@@ -285,8 +289,12 @@ class BitCenterLSTMTagger(BitCenterModule):
         # why they have this dimensionality.
         # The axes semantics are (num_layers, minibatch_size, hidden_dim)
         batch_size = x.size(1)
-        dtype = self.embedding.weight.dtype
-        device = self.embedding.weight.device
+        if self.do_offset:
+            dtype = self.embedding.weight.dtype
+            device = self.embedding.weight.device
+        else:
+            dtype = self.embedding.weight_delta.dtype
+            device = self.embedding.weight_delta.device
         hidden_dim = self.lstm_cell[0].hidden_size
         return (torch.zeros(batch_size, hidden_dim, dtype=dtype, device=device),
                 torch.zeros(batch_size, hidden_dim, dtype=dtype, device=device))
@@ -305,15 +313,22 @@ class BitCenterLSTMTagger(BitCenterModule):
             h_list.append(h)
         h_seq = torch.stack(h_list, dim=0)
         h_seq = h_seq.view(-1, h.size(-1))
-        # print(h_seq.shape, y.shape)
-        y = y.view(-1)
-        h_seq = h_seq[y != -1]
-        y = y[y != -1]
-        out = self.linear(h_seq)
-        self.output = out
+        # # print(h_seq.shape, y.shape)
+        # y = y.view(-1)
+        # h_seq = h_seq[y != -1]
+        # y = y[y != -1]
+        # out = self.linear(h_seq)
+        # self.output = out
         if test:
+            out = self.linear(h_seq)
+            self.output = out
             return out
         else:
+            y = y.view(-1)
+            h_seq = h_seq[y != -1]
+            y = y[y != -1]
+            out = self.linear(h_seq)
+            self.output = out
             self.loss = self.criterion(out, y)
             if isinstance(self.criterion, BitCenterCrossEntropy) \
                 and self.criterion.do_offset == False:
@@ -330,6 +345,7 @@ def LSTM(num_embeddings,
          cast_func=void_cast_func,
          n_train_sample=1,
          seq_length=1,
+         reg_lambda=0.0,
          dtype="bc"):
     return BitCenterLSTMTagger(
          num_embeddings=num_embeddings,
@@ -339,5 +355,6 @@ def LSTM(num_embeddings,
          n_classes=12,
          n_train_sample=n_train_sample,
          seq_length=seq_length,
+         reg_lambda=reg_lambda,
          dtype=dtype)
 
