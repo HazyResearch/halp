@@ -142,8 +142,8 @@ elif LP_DEBUG:
 
 # TODO resolve this for trainin procedure and avoid this check
 print("dataset stats: n_batch, batch_size, T ", len(train_loader), args.batch_size, args.T)
-if len(train_loader) != args.T:
-    raise Exception("Currently not supporting settings other than T = 1 epoch, please resolve")
+if len(train_loader) % args.T != 0:
+    raise Exception("Currently not supporting settings other than T = epoch_len/n")
 
 # determine the dtype
 if args.solver.startswith("bc-"):

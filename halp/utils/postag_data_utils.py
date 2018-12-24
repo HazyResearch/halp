@@ -91,27 +91,29 @@ def download_postag_dataset(download_path):
 #     # assert test_words < train_words
 #     # assert test_tags < train_tags
 
+def get_dict(sentences):
+    ps = PorterStemmer()
+    tags = set([tag for sentence in sentences for _, tag in sentence])
+    # words = set(
+    #     [w for sentence in sentences for w, _ in sentence])
+    words = set(
+        [ps.stem(w) for sentence in sentences for w, _ in sentence])
+    tag_dict = {}
+    word_dict = {}
+    assert type(tags) == set
+    assert type(words) == set
+    for i, tag in enumerate(tags):
+        tag_dict[tag] = i
+    for i, word in enumerate(words):
+        word_dict[word] = i
+    return tag_dict, word_dict
+
 def process_data(data_path=DOWNLOAD_PATH + "/treebank/processed/"):
     os.makedirs(data_path, exist_ok=True)
     set_seed(0)
     ps = PorterStemmer()
     logger.info("Start processing dataset")
     sentences = nltk.corpus.treebank.tagged_sents(tagset='universal')
-
-    def get_dict(sentences):
-        tags = set([tag for sentence in sentences for _, tag in sentence])
-
-        words = set(
-            [ps.stem(w) for sentence in sentences for w, _ in sentence])
-        tag_dict = {}
-        word_dict = {}
-        assert type(tags) == set
-        assert type(words) == set
-        for i, tag in enumerate(tags):
-            tag_dict[tag] = i
-        for i, word in enumerate(words):
-            word_dict[word] = i
-        return tag_dict, word_dict
 
     tag_dict, word_dict = get_dict(sentences)
     train_ratio = 0.8
@@ -121,6 +123,40 @@ def process_data(data_path=DOWNLOAD_PATH + "/treebank/processed/"):
     test_sentences = [sentences[i] for i in idx[split_idx:]]
     train_sentences= [[(ps.stem(word[0]), word[1]) for word in sentence] for sentence in train_sentences]
     test_sentences= [[(ps.stem(word[0]), word[1]) for word in sentence] for sentence in test_sentences]
+    # train_sentences= [[(word[0], word[1]) for word in sentence] for sentence in train_sentences]
+    # test_sentences= [[(word[0], word[1]) for word in sentence] for sentence in test_sentences]
+
+    with open(data_path + "trainset", "wb") as f:
+        cp.dump(train_sentences, f)
+
+    with open(data_path + "testset", "wb") as f:
+        cp.dump(test_sentences, f)
+
+    with open(data_path + "tag_dict", "wb") as f:
+        cp.dump(tag_dict, f)
+
+    with open(data_path + "word_dict", "wb") as f:
+        cp.dump(word_dict, f)
+    logger.info("Processing dataset done.")
+
+
+def process_conll2000_data(data_path=DOWNLOAD_PATH + "/conll2000/processed/"):
+    os.makedirs(data_path, exist_ok=True)
+    set_seed(0)
+    ps = PorterStemmer()
+    logger.info("Start processing dataset")
+    
+    train_sentences = nltk.corpus.conll2000.tagged_sents(
+        "train.txt", tagset='universal')
+    test_sentences = nltk.corpus.conll2000.tagged_sents(
+        "test.txt", tagset='universal')
+    # sentences = nltk.corpus.treebank.tagged_sents(tagset='universal')
+
+    tag_dict, word_dict = get_dict(train_sentences + test_sentences)
+    train_sentences= [[(ps.stem(word[0]), word[1]) for word in sentence] for sentence in train_sentences]
+    test_sentences= [[(ps.stem(word[0]), word[1]) for word in sentence] for sentence in test_sentences]
+    # train_sentences= [[(word[0], word[1]) for word in sentence] for sentence in train_sentences]
+    # test_sentences= [[(word[0], word[1]) for word in sentence] for sentence in test_sentences]
 
     with open(data_path + "trainset", "wb") as f:
         cp.dump(train_sentences, f)
@@ -173,6 +209,11 @@ def collate_fn(data):
     # print("input shape ", X.shape, Y.shape)
     return X, Y
 
+# def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/conll2000/processed/", args=None):
+    '''
+    Treebank 3131 train samples, conll2000 8936 train sample
+    Conll
+    '''
 def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", args=None):
     with open(data_path + "trainset", "rb") as f:
         train_sentences = cp.load(f)
@@ -182,12 +223,14 @@ def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", a
         tag_dict = cp.load(f)
     with open(data_path + "word_dict", "rb") as f:
         word_dict = cp.load(f)
-    max_seq_length = 271
+    max_seq_length = 271 # this is for treebank
     num_embeddings = len(word_dict)
+    assert len(tag_dict) == args.n_classes
     # train_sentences = cp.load(data_path + "/trainset")
     # test_sentences = cp.load(data_path + "/testset")
     # tag_dict = cp.load(data_path + "/tag_dict")
     # word_dict = cp.load(data_path + "/word_dict")
+    print(len(train_sentences))
 
     if args.double_debug:
         train_sentences = train_sentences[:(args.batch_size * DOUBLE_PREC_DEBUG_EPOCH_LEN)]
@@ -207,3 +250,5 @@ def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", a
 if __name__ == "__main__":
     download_postag_dataset(DOWNLOAD_PATH)
     process_data()
+    process_conll2000_data()
+
