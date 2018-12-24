@@ -1,5 +1,5 @@
-import nltk
-from nltk.stem import PorterStemmer
+#import nltk
+#from nltk.stem import PorterStemmer
 import numpy as np
 import sys, os
 import torch
@@ -11,8 +11,8 @@ import logging
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
-DOWNLOAD_PATH = "./datasets/nltk/"
-nltk.data.path.append(DOWNLOAD_PATH)
+DOWNLOAD_PATH = "../datasets/nltk/"
+#nltk.data.path.append(DOWNLOAD_PATH)
 
 
 def download_postag_dataset(download_path):

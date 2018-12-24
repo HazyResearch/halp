@@ -13,10 +13,10 @@ if __name__ == "__main__":
     lr_list = [0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
     # seed_list = [1, 2, 3,]
     momentum_list = [0.0, 0.9]
-    T_list = [49]
+    T_list = [98]
     dataset = "treebank"
     model = "lstm"
-    run_option = "dryrun"
+    run_option = "run"
 
     for seed_list in [[1], [2], [3]]:
         opt_algo_list = ["lp-svrg", "lp-sgd"]
