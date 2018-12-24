@@ -9,11 +9,11 @@ if __name__ == "__main__":
     # n_epochs = 25 # to resume from 325
     batch_size = 16
     n_classes = 12
-    l2_reg_list = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2]
-    lr_list = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0]
+    l2_reg_list = [0.0, 1e-5, 1e-4, 1e-3, 1e-2]
+    lr_list = [0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0]
     # seed_list = [1, 2, 3,]
     momentum_list = [0.0, 0.9]
-    T_list = [196]
+    T_list = [49]
     dataset = "treebank"
     model = "lstm"
     run_option = "dryrun"
@@ -35,8 +35,8 @@ if __name__ == "__main__":
             T_list,
             dataset,
             model,
-            cluster="dawn",
-            # cluster="starcluster",
+            #cluster="dawn",
+            cluster="starcluster",
             run_option=run_option,
             on_site_compute=True)
 
