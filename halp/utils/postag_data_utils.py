@@ -209,21 +209,21 @@ def collate_fn(data):
     # print("input shape ", X.shape, Y.shape)
     return X, Y
 
-# def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/conll2000/processed/", args=None):
+def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/conll2000/processed/", args=None):
     '''
     Treebank 3131 train samples, conll2000 8936 train sample
     Conll
     '''
-def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", args=None):
+# def get_treebank_data_loader(data_path=DOWNLOAD_PATH + "/treebank/processed/", args=None):
     with open(data_path + "trainset", "rb") as f:
-        train_sentences = cp.load(f)
+        train_sentences = cp.load(f)[:8928]   # to have even number of steps in each epoch for fractional epoch T runs
     with open(data_path + "testset", "rb") as f:
         test_sentences = cp.load(f)
     with open(data_path + "tag_dict", "rb") as f:
         tag_dict = cp.load(f)
     with open(data_path + "word_dict", "rb") as f:
         word_dict = cp.load(f)
-    max_seq_length = 271 # this is for treebank
+    max_seq_length = 271 # this is for treebank, but also works for conll
     num_embeddings = len(word_dict)
     assert len(tag_dict) == args.n_classes
     # train_sentences = cp.load(data_path + "/trainset")
