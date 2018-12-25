@@ -189,7 +189,7 @@ def get_config_with_best_train_loss(top_directory, pattern_list, seed_list=[1, 2
                             if not os.path.exists(top_directory + "/" + dir + "/run.log"):
                                     print(top_directory + "/" + dir + "/run.log missing!" )
                                     continue
-                            loss = get_train_loss(top_directory + "/" + dir + "/run.log")
+                            loss = get_train_loss(top_directory + "/" + dir + "/run.log")[(-epoch_len * total_epoch):]
                             if len(loss) == 0:
                                     print(top_directory + "/" + dir + "/run.log has 0 train loss record" )
                                     continue
@@ -229,7 +229,7 @@ def get_config_with_best_test_acc(top_directory, pattern_list, seed_list=[1, 2, 
             if not os.path.exists(top_directory + "/" + dir + "/run.log"):
                 print(top_directory + "/" + dir + "/run.log missing!" )
                 continue
-            acc = get_test_acc(top_directory + "/" + dir + "/run.log")
+            acc = get_test_acc(top_directory + "/" + dir + "/run.log")[(-total_epoch):]
             if len(acc) == 0:
                 print(top_directory + "/" + dir + "/run.log has 0 test accuracy record" )
                 continue
