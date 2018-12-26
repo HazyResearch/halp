@@ -362,6 +362,10 @@ def train_bit_center_optimizer(model,
             optimizer.zero_grad()
             if model.on_site_compute:
                 # in on site mode we need to calculate the offsets on site
+                # as the delta is not added to offset variable yet, this is
+                # equivalent to compute gradient for input/output at the fixed
+                # offset model value. As optimizer step is not called, the offset 
+                # gradients wrt parameters are also not affected.
                 if args.double_debug and (X.dtype != torch.long):
                     X = X.double()
                 model.set_mode(do_offset=True)
