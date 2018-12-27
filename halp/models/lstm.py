@@ -31,7 +31,6 @@ class BitCenterLSTMCell(BitCenterModule, nn.LSTMCell):
                  cast_func=void_cast_func,
                  n_train_sample=1):
         BitCenterModule.__init__(self)
-        # nn.LSTMCell(input_size=input_size, hidden_size=hidden_size, bias=bias)
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -119,7 +118,6 @@ def copy_lstm_cell_weights(src, tar):
     # source is bitcenter LSTM cell, tar is the conventional
     tar_state_dict = tar.state_dict()
     for name_src, p_src in src.named_parameters():
-        # print(name_src, name_tar)
         if name_src in tar_state_dict.keys():
             tar_state_dict[name_src].data.copy_(p_src.data)
     return tar
@@ -147,7 +145,6 @@ class LSTMTagger(nn.Module):
 
         # The linear layer that maps from hidden state space to tag space
         self.linear = nn.Linear(hidden_dim, tagset_size)
-        # self.hidden = self.init_hidden()
 
     def init_hidden(self, sentence):
         # Before we've done anything, we dont have any hidden state.
@@ -304,7 +301,6 @@ class BitCenterLSTMTagger(BitCenterModule):
         (h, c) = self.init_hidden(x)
         out = self.embedding(x)        
         h_list = []
-        # assert out.size(0) == self.seq_length
         # note seq_length is the maximum seq length in the dataset
         for i in range(out.size(0)):
             state = self.lstm_cell[i](out[i], (h, c))
@@ -312,12 +308,6 @@ class BitCenterLSTMTagger(BitCenterModule):
             h_list.append(h)
         h_seq = torch.stack(h_list, dim=0)
         h_seq = h_seq.view(-1, h.size(-1))
-        # # print(h_seq.shape, y.shape)
-        # y = y.view(-1)
-        # h_seq = h_seq[y != -1]
-        # y = y[y != -1]
-        # out = self.linear(h_seq)
-        # self.output = out
         if test:
             out = self.linear(h_seq)
             self.output = out

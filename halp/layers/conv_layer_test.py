@@ -80,8 +80,6 @@ class TestBitCenterConv2DLayer(TestBitCenterLayer, TestCase):
         self.target_dtype = None
         if do_double:
             layer.double()
-            # input_delta = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
-            # input_fp = torch.randn(n_train_sample, dim_in, dtype=torch.double, requires_grad=True).cuda()
             layer.weight.data.copy_(
                 torch.randn(
                     dim_out,

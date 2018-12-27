@@ -59,7 +59,6 @@ def run_experiment(exp_name,
     if on_site_compute:
       template += " --on-site-compute"
 
-    # data_path = "/dfs/scratch0/zjian/float_halp/data/" + experiment_name
     opt = "sgd"
     epoch = 300
     save_path = "/dfs/scratch0/zjian/floating_halp/exp_res/" + exp_name + "/"
@@ -127,5 +126,4 @@ def run_experiment(exp_name,
                                     os.system(launch_command)
 
                                 cnt += 1
-                    #exit(0)
     print(cnt, "jobs submitted!")

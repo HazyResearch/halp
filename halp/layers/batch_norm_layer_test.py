@@ -25,15 +25,12 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         # this config can test for padding != 0 and stride > 1 cases
         config["input_w"] = 15
         config["input_h"] = 8
-        # config["input_w"] = 2
-        # config["input_h"] = 1
         config["eps"] = 1e-5
         config["momentum"] = 0.1
         if type == "grad_check":
-            # config["n_train_sample"] = 1
             config["n_train_sample"] = 6
             config["num_features"] = 3
-            config["bias"] = True  # this is dummy
+            config["bias"] = True  # this is dummy to adapt test interface
             config["cast_func"] = void_cast_func
             config["do_double"] = True
             config["seed"] = 0
@@ -202,11 +199,6 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         loss = 0.5 * torch.sum(output_final**2)
         loss.backward()
 
-        # print("triple check 1 ", torch.sum(output_final**2))
-        # print("double check ", torch.sum(layer_orig.running_mean**2))
-        # print("double check 2 ", torch.sum(layer_orig.running_var**2))
-        # print("inside non bc input grad ", torch.sum(input[0].grad.data**2), torch.sum(layer_orig.weight.grad**2), torch.sum(layer_orig.bias.grad**2))
-
         grad_list.append(input[0].grad.data.clone())
         grad_list.append(layer_orig.weight.grad.data.clone())
         grad_list.append(layer_orig.bias.grad.data.clone())
@@ -230,126 +222,7 @@ class TestBitCenterBatchNorm2DLayer(TestBitCenterLayer, TestCase):
         ]
         return grad_list
 
-    # def get_analytical_grad(self, layer1, input_fp, input_delta, target=None):
-    #     # this function get the analytical grad with respect to parameters and input
-    #     # it calls get_analytical_param_grad to get grad wrt to paramters.
-    #     # the framework in the function is generic to all layers
-    #     layer = copy.deepcopy(layer1)
-    #     layer.set_mode(do_offset=True)
-    #     grad_list = []
-    #     output_fp = layer(*input_fp)
-    #     output_fp_copy = output_fp.data.clone()
-    #     loss_fp = torch.sum(0.5 * output_fp * output_fp)
-    #     loss_fp.backward()
-    #     grad_input_fp = layer.input_grad_for_test.clone()
-
-    #     layer.set_mode(do_offset=False)
-    #     output_lp = layer(*input_delta)
-    #     loss_lp = torch.sum(0.5 * output_lp * output_lp)
-    #     loss_lp.backward()
-    #     grad_input_delta = layer.input_grad_for_test.clone()
-    #     # as we only have 1 minibatch, we can directly use layer.grad_output_cache
-    #     input_grad = grad_input_fp + grad_input_delta
-    #     grad_list.append(input_grad)
-
-    #     grad_list += self.get_analytical_param_grad(layer)
-    #     # grad_list += [layer.running_mean.clone() + layer.running_mean_delta.clone()]
-    #     # grad_list += [layer.running_var.clone() + layer.running_var_delta.clone()]
-
-    #     # print("triple check 2", torch.sum((output_lp + output_fp)**2))
-    #     # print("double check 3 ", len(grad_list), torch.sum(grad_list[-2]**2), torch.sum(grad_list[-1]**2), torch.sum(grad_list[0]**2), torch.sum(grad_list[1]**2), torch.sum(grad_list[2]**2))
-
-    #     return output_lp + output_fp, grad_list
-
 
 if __name__ == "__main__":
     print(torch.__version__)
     unittest.main()
-
-    ##########################
-    # manual debugging snippet
-    ##########################
-    # input_lp = np.array([0.0617,0.6213])
-    # input_fp = np.array([0.6614,0.2669])
-    # input_full = input_fp + input_lp
-    # eps = 1e-5
-
-    # batch_mean = np.mean(input_full)
-    # batch_var = np.std(input_full)**2 * input_lp.size / float(input_lp.size - 1)
-
-    # # batch_var = np.mean(input_full**2) - batch_mean**2
-
-    # batch_mean_lp = np.mean(input_lp)
-    # batch_var_lp = np.std(input_lp)**2
-
-    # running_mean_full = np.array([0.6472]) + np.array([0.2490])
-    # running_var_full = np.array([0.3354]) + np.array([0.4564])
-
-    # # running_mean_full = np.array([0.0])
-    # # running_var_full = np.array([1.0])
-
-    # # running_mean_lp = np.array([0.6472])
-    # # running_var_lp = np.array([0.3354])
-
-    # weight_full = np.array([0.2699]) + np.array([0.2072])
-    # bias_full = np.array([0.2704]) + np.array([0.5507])
-
-    # weight_lp = np.array([0.2072])
-    # bias_lp = np.array([0.5507])
-
-    # # running_mean_new = 0.9 * running_mean_full + 0.1 * batch_mean
-    # # running_var_new = 0.9 * running_var_full + 0.1 * batch_var
-
-    # running_mean_new = 0.9 * running_mean_full + 0.1 * batch_mean
-    # running_var_new = 0.9 * running_var_full + 0.1 * batch_var
-
-    # x_hat_full = ((input_fp + input_lp) - batch_mean) / np.sqrt(batch_var + 1e-5)
-    # x_hat_lp = ((input_lp + 0.0) - batch_mean_lp) / np.sqrt(batch_var_lp + 1e-5)
-
-    # y_hat_full = x_hat_full * weight_full + bias_full
-    # y_hat_lp = x_hat_lp * weight_lp + bias_lp
-
-    # m = 2
-    # d_y_full = y_hat_full
-    # d_y_lp = y_hat_lp
-
-    # inv_sigma_full = 1.0/np.sqrt(batch_var + eps)
-    # inv_sigma_lp = 1.0/np.sqrt(batch_var_lp + eps)
-
-    # d_x_hat_full = d_y_full * weight_full
-    # d_x_hat_lp = d_y_lp * weight_lp
-
-    # # print("outside pre ", d_x_hat_lp, inv_sigma_lp, batch_var_lp + eps, np.sqrt(batch_var_lp + eps), batch_var_lp, batch_mean_lp)
-
-    # d_sigma_sq_full = -np.sum(d_x_hat_full * (input_full - batch_mean) * 0.5 * inv_sigma_full**3)
-    # d_sigma_sq_lp = -np.sum(d_x_hat_lp * (input_lp - batch_mean_lp) * 0.5 * inv_sigma_lp**3)
-
-    # d_mu_full = -np.sum(d_x_hat_full * inv_sigma_full) + np.sum(d_sigma_sq_full * -2.0 * (input_full - batch_mean)) / m
-    # d_mu_lp = -np.sum(d_x_hat_lp * inv_sigma_lp) + np.sum(d_sigma_sq_lp * -2.0 * (input_lp - batch_mean_lp)) / m
-
-    # # print("outside int ", d_sigma_sq_lp, d_mu_lp)
-
-    # dx_full = d_x_hat_full * inv_sigma_full + d_sigma_sq_full * 2 * (input_full - batch_mean) / m + d_mu_full / m
-    # dx_lp =  d_x_hat_lp * inv_sigma_lp + d_sigma_sq_lp * 2 * (input_lp - batch_mean_lp) / m + d_mu_lp / m
-
-    # d_weight_full = np.sum(d_y_full * x_hat_full)
-    # d_weight_lp = np.sum(d_y_lp * x_hat_lp)
-
-    # d_bias_full = np.sum(d_y_full)
-    # d_bias_lp = np.sum(d_y_lp)
-
-    # print("test ", y_hat_full, y_hat_lp, dx_full, dx_lp, running_mean_full, running_var_full, running_mean_new, running_var_new)
-
-    # input_full_t = torch.nn.Parameter(torch.Tensor(input_full).view(1, 1, 2, 1).cuda().cpu(), requires_grad=True)
-    # layer_orig = torch.nn.BatchNorm2d(1, momentum=0.1).cuda().cpu()
-    # layer_orig.weight.data.copy_(torch.tensor(weight_full, dtype=layer_orig.weight.dtype))
-    # layer_orig.bias.data.copy_(torch.tensor(bias_full, dtype=layer_orig.bias.dtype))
-    # layer_orig.running_mean.data.copy_(torch.tensor(running_mean_full, dtype=layer_orig.bias.dtype))
-    # layer_orig.running_var.data.copy_(torch.tensor(running_var_full, dtype=layer_orig.bias.dtype))
-
-    # print("pre test stat ", layer_orig.running_mean.item(), layer_orig.running_var.item())
-
-    # output = layer_orig(input_full_t)
-    # loss = torch.sum(0.5 * output * output)
-    # loss.backward()
-    # print("test layer grad ", output.cpu().detach().numpy(), input_full_t.grad.data.cpu().detach().numpy(), layer_orig.running_mean.item(), layer_orig.running_var.item())

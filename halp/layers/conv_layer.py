@@ -90,12 +90,8 @@ class BitCenterConv2DFunction(Function):
         conv2d = lambda input_unf, weight: \
             input_unf.transpose(1, 2).matmul(
             weight.permute(1, 2, 3, 0).view(-1, weight.size(0)))
-
-        # print("inside ", input_delta_unf.transpose(1, 2).shape, weight_lp.permute(1, 2, 3, 0).view(-1, weight_lp.size(0)).shape, weight_lp.shape)
-
         output = conv2d(input_delta_unf, weight_lp) \
             + conv2d(input_lp_unf + input_delta_unf, weight_delta)
-        # print(output.size(), output_size, kernel_size, input_lp.size(), weight_lp.size())
         channel_out = weight_lp.size(0)
         output = output.transpose(1, 2).view(batch_size, channel_out,
                                              *output_size)
@@ -108,7 +104,6 @@ class BitCenterConv2DFunction(Function):
         '''
         In this function, suffix represent the results from torch unfold style im2col op
         '''
-        # TODO extend to accommodate more configs for dilation, groups
         input_lp, input_delta, output_grad_lp, weight_lp, weight_delta, bias_lp, bias_delta = ctx.saved_tensors
         kernel_size, stride, padding, dilation, groups, input_shape = ctx.hyperparam
         # get unfolded input
@@ -125,7 +120,6 @@ class BitCenterConv2DFunction(Function):
             padding=padding,
             stride=stride)
 
-        # assert (stride, padding, dilation, groups) == (1, 0, 1, 1)
         batch_size, channel_out, w_out, h_out = list(grad_output.size())
         w_in, h_in = input_shape[-2:]
         channel_in = weight_lp.size(1)

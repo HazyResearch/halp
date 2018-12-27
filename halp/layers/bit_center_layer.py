@@ -84,7 +84,6 @@ class BitCenterModule(nn.Module):
                 else:
                     param_norm += torch.sum(p.data.type(torch.FloatTensor)
                                             **2).item()
-            # print("check param norm ", name, param_norm, p.requires_grad)
         return param_norm
 
     def get_named_offset_plus_delta_parameters(self):
@@ -209,8 +208,6 @@ class BitCenterLayer(BitCenterModule):
         # in the Python API, e.g. the linear layer
         if self.do_offset:
             if self.on_site_compute:
-                # self.grad_output_cache[0:output[0].size()[0]].data.copy_(
-                #     output[0])
                 self.grad_output_cache = \
                     self.update_single_cache_on_site_compute(
                         self.grad_output_cache, output[0])
@@ -258,10 +255,8 @@ class BitCenterLayer(BitCenterModule):
                     for i, (cache, val) in enumerate(zip(self.input_cache, input)):
                         self.input_cache[i] = \
                             self.update_single_cache_on_site_compute(cache, val)
-                        # cache[0:val.size()[0]].data.copy_(val)
                 else:
                     self.input_cache = self.update_single_cache_on_site_compute(self.input_cache, input)
-                    # self.input_cache[0:input.size()[0]].data.copy_(input)
                 self.cache_iter = 0
             else:
                 if isinstance(input, list) or isinstance(input, tuple):
@@ -338,13 +333,7 @@ class BitCenterLayer(BitCenterModule):
 
     def forward_fp(self, input):
         self.check_or_setup_input_cache(input)
-        # if self.input_cache is None:
-        #     self.input_cache = self.setup_cache(input)
-        #     self.cache_iter = 0
         output = self.fp_func(input, self.weight, self.bias)
-        # if self.grad_output_cache is None:
-        #     self.grad_output_cache = self.setup_cache(output)
-        #     self.grad_cache_iter = 0
         self.check_or_setup_grad_cache(output)
         self.update_input_cache(input)
         return output
@@ -352,10 +341,6 @@ class BitCenterLayer(BitCenterModule):
     def forward_lp(self, input):
         # Need to test do_offset mode whether gradient is updated properly
         input_lp, grad_output_lp = self.get_input_cache_grad_cache(input)
-        # input_lp = self.input_cache[self.cache_iter:(
-        #     self.cache_iter + input.size(0))].cuda()
-        # grad_output_lp = \
-        #     self.grad_output_cache[self.grad_cache_iter:(self.grad_cache_iter + input.size(0))].cuda()
         input_delta = input
         weight_lp = self.weight_lp
         weight_delta = self.weight_delta
@@ -364,10 +349,6 @@ class BitCenterLayer(BitCenterModule):
         output = self.lp_func(input_delta, input_lp, grad_output_lp,
                               weight_delta, weight_lp, bias_delta, bias_lp)
         self.increment_cache_iter(input)
-        # self.cache_iter = (
-        #     self.cache_iter + input.size(0)) % self.n_train_sample
-        # self.grad_cache_iter = (
-        #     self.grad_cache_iter + input.size(0)) % self.n_train_sample
         return output
 
     def forward(self, input):
