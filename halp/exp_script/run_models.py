@@ -80,10 +80,6 @@ parser.add_argument("--float-debug", action="store_true",
                     help="using single precision to do debug and test")
 parser.add_argument("--double-debug", action="store_true",
                     help="using double precision to do debug and test")
-parser.add_argument("--only-odd-class", action="store_true",
-                    help="using double precision to do debug and test")
-parser.add_argument("--only-even-class", action="store_true",
-                    help="using double precision to do debug and test")
 parser.add_argument("--on-site-compute", action="store_true", 
                     help="use on site fp compute to avoid host memory caching")
 args = parser.parse_args()
@@ -96,7 +92,6 @@ if args.dataset == "mnist":
 elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size, args=args)
-    assert (args.only_even_class == False) or (args.only_odd_class == False)
 elif args.dataset == "conll2000":
     train_loader, val_loader, input_shape, n_train_sample, max_seq_length, num_embeddings = \
         get_conll2000_data_loader(args=args)
@@ -265,7 +260,6 @@ if args.resnet_load_ckpt:
     model_state_dict = torch.load(model_ckpt)
     opt_state_dict = torch.load(opt_ckpt)
     load_param_to_model(model, model_state_dict, to_bc_model=("bc-" in args.solver), args=args)
-    # optimizer.load_state_dict(opt_state_dict)    
     load_state_to_optimizer(optimizer, model, opt_state_dict, to_bc_opt=("bc-" in args.solver), args=args)
     logger.info("model and optimizer loaded from " + model_ckpt)
 
