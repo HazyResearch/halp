@@ -100,14 +100,7 @@ def load_mnist(ntrain=60000, ntest=10000, onehot=True):
 def get_mnist_data_loader(onehot=False, batch_size=1, args=None):
     LP_DEBUG = args.float_debug
     DOUBLE_PREC_DEBUG = args.double_debug
-    debug_test = LP_DEBUG or DOUBLE_PREC_DEBUG
     X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
-    if debug_test:
-        debug_data_size = 3
-        X_train = X_train[0:debug_data_size]
-        X_val = X_val[0:debug_data_size]
-        Y_train = Y_train[0:debug_data_size]
-        Y_val = Y_val[0:debug_data_size]
     X_train, X_val = torch.FloatTensor(X_train), torch.FloatTensor(X_val)
     Y_train, Y_val = torch.LongTensor(Y_train), torch.LongTensor(Y_val)
 
