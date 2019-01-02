@@ -97,9 +97,10 @@ def load_mnist(ntrain=60000, ntest=10000, onehot=True):
 
     return trX, teX, trY, teY
 
-def get_mnist_data_loader(onehot=False, debug_test=False, batch_size=1, args=None):
+def get_mnist_data_loader(onehot=False, batch_size=1, args=None):
     LP_DEBUG = args.float_debug
     DOUBLE_PREC_DEBUG = args.double_debug
+    debug_test = LP_DEBUG or DOUBLE_PREC_DEBUG
     X_train, X_val, Y_train, Y_val = load_mnist(onehot=False)
     if debug_test:
         debug_data_size = 3

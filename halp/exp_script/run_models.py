@@ -26,8 +26,6 @@ from halp.utils.train_utils import train_non_bit_center_optimizer
 from halp.utils.train_utils import train_bit_center_optimizer
 from halp.utils.train_utils import StepLRScheduler, ModelSaver
 from halp.utils.train_utils import load_param_to_model, load_state_to_optimizer
-from halp.utils.utils import DOUBLE_PREC_DEBUG_EPOCH_LEN
-from halp.utils.utils import LP_DEBUG_EPOCH_LEN
 import logging
 import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -46,14 +44,6 @@ parser.add_argument("-a", "--alpha", action="store", default=0.01, type=float,
                     help="Learning Rate")
 parser.add_argument("-m", "--momentum", default=0.0, type=float,
                     help="momentum value for Polyak's momentum algorithm")
-parser.add_argument("-b", "--n-bits", action="store", default=8, type=int,
-                    help="Number of bits of precision")
-parser.add_argument("--lin-fwd-sf", action="store", default=1, type=float,
-                    help="Linear layer forward scale factor.")
-parser.add_argument("--lin-bck-sf", action="store", default=1e-2, type=float,
-                    help="Linear layer backwards scale factor.")
-parser.add_argument("--loss-sf", action="store", default=1e-3, type=float,
-                    help="Loss scale factor.")
 parser.add_argument("-s", "--seed", action="store", default=42, type=int,
                     help="Random seed.")
 parser.add_argument("-c", "--n-classes", action="store", default=10, type=int,
@@ -67,13 +57,11 @@ parser.add_argument("--reg", type=float, default=0.0,
                     help="L2 regularizer strength")
 parser.add_argument("--cuda", action="store_true", 
                     help="currently pytorch only support store true.")
-parser.add_argument("--debug-test", action="store_true",
-                    help="switch to use small toy example for debugging.")
 parser.add_argument("--rounding", default="near", type=str,
                     choices=["near", "stoc", "void"],
                     help="Support nearest (near) and stochastic (stoc) rounding.")
 parser.add_argument("--dataset", default="mnist", type=str, 
-                    choices=["mnist", "cifar10", "treebank"], 
+                    choices=["mnist", "cifar10", "conll2000"], 
                     help="The dataset to train on.")
 parser.add_argument("--model", default="logreg", type=str,
                     choices=["logreg", "lenet", "resnet", "lstm"],
@@ -101,31 +89,22 @@ parser.add_argument("--on-site-compute", action="store_true",
 args = parser.parse_args()
 utils.set_seed(args.seed)
 
-# set test and debug flag
-assert not (args.float_debug and args.double_debug)
-LP_DEBUG = args.float_debug
-DOUBLE_PREC_DEBUG = args.double_debug
 
 if args.dataset == "mnist":
     train_loader, val_loader, input_shape, n_train_sample = get_mnist_data_loader(
-        onehot=False, debug_test=args.debug_test, batch_size=args.batch_size, args=args)
+        onehot=False, batch_size=args.batch_size, args=args)
 elif args.dataset == "cifar10":
     train_loader, val_loader, input_shape, n_train_sample = get_cifar10_data_loader(
         batch_size=args.batch_size, args=args)
     assert (args.only_even_class == False) or (args.only_odd_class == False)
-elif args.dataset == "treebank":
+elif args.dataset == "conll2000":
     train_loader, val_loader, input_shape, n_train_sample, max_seq_length, num_embeddings = \
         get_conll2000_data_loader(args=args)
 else:
     raise Exception(args.dataset + " not supported.")
 
-# TODO consider remove debug test flag not all the numerical test are done 
-# via DOUBLE_PREC_DEBUG flag
-if args.debug_test:
-    args.cast_func = void_cast_func
-    args.T = len(train_loader)
-    args.batch_size = 1    
-elif args.rounding == "near":
+
+if args.rounding == "near":
     args.cast_func = single_to_half_det
 elif args.rounding == "stoc":
     args.cast_func = single_to_half_stoc
@@ -134,13 +113,16 @@ elif args.rounding == "void":
 else:
     raise Exception("The rounding method is not supported!")
 
-if DOUBLE_PREC_DEBUG:
+# set test and debug flag
+assert not (args.float_debug and args.double_debug)
+if args.double_debug:
     assert args.cast_func == void_cast_func
-    args.T = DOUBLE_PREC_DEBUG_EPOCH_LEN
-elif LP_DEBUG:
-    args.T = LP_DEBUG_EPOCH_LEN
+    args.T = len(train_loader)
+elif args.float_debug:
+    assert args.cast_func == single_to_half_det
+    args.T = len(train_loader)
 
-# TODO resolve this for trainin procedure and avoid this check
+
 print("dataset stats: n_batch, batch_size, T ", len(train_loader), args.batch_size, args.T)
 if len(train_loader) % args.T != 0:
     raise Exception("Currently not supporting settings other than T = epoch_len/n")
@@ -192,7 +174,7 @@ if args.cuda:
     # the location of the cache is not controled by the cuda() here
     model.cuda()
 
-if DOUBLE_PREC_DEBUG:
+if args.double_debug:
     model.double()
 
 # set on set compute flag recursively for all the modules
@@ -263,7 +245,7 @@ else:
 optimizer.lr_scheduler = StepLRScheduler(
     optimizer, step_epoch=[150, 250], step_fac=0.1)
 # specify the epochs where to save check points
-save_step_epochs = np.array([1, 10, 50, 100, 150, 151, 200, 251, 300])
+save_step_epochs = np.array([300])
 optimizer.model_saver = ModelSaver(
     optimizer, model, step_epoch=save_step_epochs, save_path=args.resnet_save_ckpt_path)
 if args.resnet_save_ckpt:
@@ -283,8 +265,8 @@ if args.resnet_load_ckpt:
     model_state_dict = torch.load(model_ckpt)
     opt_state_dict = torch.load(opt_ckpt)
     load_param_to_model(model, model_state_dict, to_bc_model=("bc-" in args.solver), args=args)
+    # optimizer.load_state_dict(opt_state_dict)    
     load_state_to_optimizer(optimizer, model, opt_state_dict, to_bc_opt=("bc-" in args.solver), args=args)
-    # optimizer.load_state_dict(opt_state_dict) 
     logger.info("model and optimizer loaded from " + model_ckpt)
 
 try:
