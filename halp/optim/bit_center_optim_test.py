@@ -199,7 +199,6 @@ class TestBitCenterOptim(HalpTest):
                 if i == n_minibatch - 1:
                     optimizer.on_end_lp_steps(model)
                 # test update procedures
-                # print("test condition ", is_first_update, is_last_update)
                 self.FuncTestLPStep(optimizer, param_dict_before_update,
                                     grad_offset_dict, is_first_update,
                                     is_last_update)

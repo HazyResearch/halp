@@ -97,7 +97,6 @@ class BitCenterLinear(BitCenterLayer, Linear):
                 self.grad_output_cache = \
                     self.update_single_cache_on_site_compute(
                         self.grad_output_cache, output[0])
-                # self.grad_output_cache[0:output[0].size()[0]].data.copy_(output[0])
                 self.grad_cache_iter = 0
                 self.output_size = output[0].size()
             else:

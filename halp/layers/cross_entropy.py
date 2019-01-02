@@ -104,8 +104,6 @@ class BitCenterCrossEntropy(BitCenterLayer):
                 self.grad_output_cache = \
                     self.update_single_cache_on_site_compute(
                         self.grad_output_cache, input[0])
-                # self.grad_output_cache[0:input[0].size(0)].data.copy_(
-                #         input[0])
                 self.grad_cache_iter = 0
                 self.output_size = input[0].size()
             else:
@@ -122,9 +120,6 @@ class BitCenterCrossEntropy(BitCenterLayer):
 
     def forward_fp(self, input, target):
         self.check_or_setup_input_cache(input)
-        # if self.input_cache is None:
-        #     self.input_cache = self.setup_cache(input)
-        #     self.cache_iter = 0
         output = self.fp_func(input, target)
         if self.grad_output_cache is None:
             # in the cross entropy layer we need to cache the input gradient
@@ -158,7 +153,6 @@ class BitCenterCrossEntropy(BitCenterLayer):
 
     def forward(self, input, target):
         # Need to test do_offset mode whether gradient is updated properly
-        # print("ce forward mode ", self.do_offset)
         if self.do_offset:
             return self.forward_fp(input, target)
         else:

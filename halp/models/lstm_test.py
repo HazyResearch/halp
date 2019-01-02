@@ -19,13 +19,6 @@ class LSTMTaggerTest(BitCenterModelTest, TestCase):
 
     def get_config(self):
         config = {}
-        # config["batch_size"] = 1
-        # config["n_minibatch"] = 1
-        # config["n_classes"] = 1
-        # config["embedding_dim"] = 1
-        # config["num_embeddings"] = 1
-        # config["hidden_dim"] = 1
-        # config["seq_length"] = 1
         config["batch_size"] = 25
         config["n_minibatch"] = 1
         config["n_classes"] = 10

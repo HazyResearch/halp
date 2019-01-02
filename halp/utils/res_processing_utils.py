@@ -97,24 +97,6 @@ def get_ave_metric(pattern, top_directory, seed_list=[1,2,3], metric="test_acc")
 			curve += np.array(values)
 	return curve / float(len(seed_list))
 
-
-# def get_config_with_best_test_acc(top_directory, dir_list):
-# 	best_test_acc = 0.0
-# 	best_config = ""
-# 	best_acc_epoch_id = 0
-# 	for dir in dir_list:
-# 		if not os.path.exists(top_directory + "/" + dir + "/run.log"):
-# 			# print(top_directory + "/" + dir + "/run.log missing!" )
-# 			continue
-# 		acc = get_results(top_directory + "/" + dir + "/run.log")
-# 		if len(acc) == 0:
-# 			continue
-# 		if np.max(acc) > best_test_acc:
-# 			best_test_acc = np.max(acc)
-# 			best_config = dir
-# 			best_acc_epoch_id = np.argmax(acc)
-# 	print("best test acc and config ", best_test_acc, best_acc_epoch_id, best_config)
-
 def get_config_with_best_test_acc(top_directory, pattern_list, seed_list=[1, 2, 3]):
 	best_test_acc = 0.0
 	best_config = ""

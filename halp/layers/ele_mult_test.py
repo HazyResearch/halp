@@ -17,14 +17,6 @@ class TestBitCenterEleMultLayer(TestBitCenterNoParamLayer, TestCase):
     def get_config(self, type="grad_check"):
         config = {}
         if type == "grad_check":
-            # config["n_train_sample"] = 1
-            # config["channel_in"] = 1
-            # config["w_in"] = 1
-            # config["h_in"] = 1
-            # config["cast_func"] = void_cast_func
-            # config["do_double"] = True
-            # config["seed"] = 0
-            # config["batch_size"] = 1
             config["n_train_sample"] = 5
             config["channel_in"] = 7
             config["w_in"] = 4

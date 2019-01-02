@@ -87,12 +87,6 @@ class SVRG(torch.optim.SGD):
             for i, (data, target) in enumerate(self.data_loader):
                 closure(data, target)
 
-                # for idx, p in enumerate(self._params):
-                #     if p.grad is not None:
-                #         print("inside check ", 
-                #             0.003**2*torch.sum(p.grad.data**2).item(),
-                #             torch.sum(p.data**2).item())
-
             # Adjust summed gradients by num_iterations accumulated over
             # assert(n_iterations == len(self.data_loader))
             for p in self._params:
@@ -102,7 +96,6 @@ class SVRG(torch.optim.SGD):
             if self._full_grad is None:
                 self._full_grad = []
                 for p in self._params:
-                    # print("needs grad ", p.requires_grad)
                     if p.grad is not None:
                         self._full_grad.append(p.grad.data.clone())
                     else:

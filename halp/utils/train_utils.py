@@ -39,8 +39,6 @@ def load_state_to_optimizer(optimizer, model, state_dict, to_bc_opt=False, args=
     assert len(optimizer.param_groups
                ) == 1  # we currently only consider 1 param group case
     lr_after_ckpt = optimizer.param_groups[0]["lr"]
-    # TODO need to deal with casting functions
-    # named_delta_parameters = optimizer.get_named_delta_parameters(only_requires_grad=True)
     load_cnt = 0
     if to_bc_opt:
         for name, param in optimizer.get_named_delta_parameters(
@@ -198,12 +196,8 @@ def evaluate_acc(model, val_loader, use_cuda=True, dtype="fp", args=None):
             X, Y = X.cuda(), Y.cuda()
         if dtype == "lp" and (X.dtype != torch.long):
             X = model.cast_func(X)
-        # if len(list(X.size())) != 2:
-        #     X = X.view(X.size(0), -1)
         if args.double_debug and (X.dtype != torch.long):
             X = X.double()
-        # if model.fine_tune:
-        #     X = model.cast_func(X)
         pred, output = model.predict(X)
         output = output[Y.view(-1) != -1]
         pred, Y = remove_dummy_classes(pred, Y)
@@ -242,10 +236,6 @@ def train_non_bit_center_optimizer(model,
         for i, (X, Y) in enumerate(train_loader):
             optimizer.model_saver.check_and_save(epoch_id, i, train_loader)
             optimizer.lr_scheduler.check_and_step(epoch_id, i, train_loader)
-            # if DOUBLE_PREC_DEBUG and i == DOUBLE_PREC_DEBUG_EPOCH_LEN:
-            #     # this is only for double precision checking and debuging
-            #     # using a smaller dataset for quick check.
-            #     break
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
             if dtype == "lp" and (X.dtype != torch.long):
@@ -327,10 +317,6 @@ def train_bit_center_optimizer(model,
     for epoch_id in range(n_epochs):
         model.train()
         for i, (X, Y) in enumerate(train_loader):
-            # if DOUBLE_PREC_DEBUG and i == DOUBLE_PREC_DEBUG_EPOCH_LEN:
-            #     # this is only for double precision checking and debuging
-            #     # using a smaller dataset for quick check.
-            #     break
             if total_iter % T == 0:
                 optimizer.on_start_fp_steps(model)
                 for j, (X_fp, Y_fp) in enumerate(train_loader):
@@ -339,22 +325,15 @@ def train_bit_center_optimizer(model,
                         X_fp, Y_fp = X_fp.cuda(), Y_fp.cuda()
                     if args.double_debug and (X_fp.dtype != torch.long):
                         X_fp = X_fp.double()
-                    # if model.fine_tune:
-                    #     X_fp = model.cast_func(X_fp)
                     loss_fp = model(X_fp, Y_fp)
                     loss_fp.backward()
                     optimizer.step_fp()
-                    # logger.info("prep train loss epoch: " + str(epoch_id) +
-                    #             " iter: " + str(j) + " loss: " +
-                    #             str(loss_fp.item()))
                 optimizer.on_end_fp_steps(model)
                 optimizer.on_start_lp_steps(model)
 
-            # start = time.time()
             if use_cuda:
                 X, Y = X.cuda(), Y.cuda()
             # note here X is the input delta. It is suppose to be zero.
-            # X = optimizer.cast_func(X).zero_()
             if dtype != "bc":
                 raise Exception(
                     "This training function does not support dtype other than bc"
@@ -403,8 +382,6 @@ def train_bit_center_optimizer(model,
                         " grad_norm: " + str(grad_norm) + " acc: " +
                         str(train_acc) + " regularizer: " +
                         str(0.5 * model.reg_lambda * param_norm))
-            # end = time.time()
-            # print(end - start)
 
         logger.info("Finished train epoch " + str(epoch_id))
         model.eval()

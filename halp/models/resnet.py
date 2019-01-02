@@ -337,7 +337,6 @@ class ResNet(BitCenterModule):
                 self.set_bn_mode(child, do_eval=do_eval)
             else:
                 child.eval()
-                # print(name + " is set to bn eval model")
 
     def forward(self, x, y, test=False):
         if self.fine_tune:
@@ -345,22 +344,13 @@ class ResNet(BitCenterModule):
             x = x.type(self.conv1.weight.dtype)
             self.set_bn_mode(self, do_eval=True)
 
-
-        # print("ckpt 0 ", torch.sum(x**2).item(), torch.sum(self.conv1.weight**2).item(), torch.sum(self.bn1.running_mean**2).item())
         out = self.relu1(self.bn1(self.conv1(x)))
-        # print("ckpt 1 ", torch.sum(out**2).item())
         out = self.layer1(out)
-        # print("ckpt 2 ", torch.sum(out**2).item())
         out = self.layer2(out)
-        # print("ckpt 3 ", torch.sum(out**2).item())
         out = self.layer3(out)
-        # print("ckpt 4 ", torch.sum(out**2).item())
         out = self.layer4(out)
-        # print("ckpt 5 ", torch.sum(out**2).item())
         out = self.avg_pool(out)
-        # print("ckpt 6 ", torch.sum(out**2).item())
         out = out.view(out.size(0), -1)
-        # print("ckpt 7 ", torch.sum(out.type(torch.FloatTensor)**2).item())
 
         # if in fine tune lp step mode, the delta are always
         # 0 as the lower layers output are fixed, as a consequence
@@ -371,22 +361,18 @@ class ResNet(BitCenterModule):
                 out = self.cast_func(out)
             else:
                 out = out.type(self.linear.weight.dtype)
-        # print("ckpt 7.5 ", torch.sum(out.type(torch.FloatTensor)**2).item())
 
         out = self.linear(out)
-        # print("ckpt 8 ", torch.sum(out**2).item())
         self.output = out
         if test:
             return out
         else:
             self.loss = self.criterion(out, y)
-            # print("ckpt 9 ", torch.sum(self.loss**2).item())
             if isinstance(self.criterion, BitCenterCrossEntropy) \
                 and self.criterion.do_offset == False:
                 # this is for the case where we want to get full output
                 # in the do_offset = False mode.
                 self.output = self.output + self.criterion.input_lp
-            # print("ckpt 9 ", torch.sum(out**2).item())
             return self.loss
 
     def predict(self, x):

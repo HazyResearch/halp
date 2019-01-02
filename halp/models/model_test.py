@@ -53,7 +53,6 @@ class BitCenterModelTest(HalpTest):
         bc_model.set_mode(do_offset=True)
         n_minibatch = config["n_minibatch"]
         for i in range(n_minibatch):
-            # print("input dtype ", x_list[i].dtype)
             output_native = native_model(x_list[i])
             loss_native = criterion(output_native, y_list[i]).detach()
             loss_fp = fp_model(x_list[i], y_list[i]).detach()

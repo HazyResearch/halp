@@ -164,8 +164,6 @@ class UtilityTest(TestCase):
                     # so that it is unlikely to fail due to
                     # extreme samples. Finer grain confirmation can be done using
                     # the following two print.
-                    # print(i, j, upper, lower, orig)
-                    # print(i, j, ratio_cnt, ratio_val, max(ratio_cnt, ratio_val))
                     if ratio_cnt >= 2:
                         assert ratio_val > 1
                     elif ratio_cnt < 0.5:

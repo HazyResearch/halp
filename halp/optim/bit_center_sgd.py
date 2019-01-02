@@ -34,7 +34,6 @@ class BitCenterOptim(SGD):
         The non bit centering version of the same update rule can be implemented only using
         step_fp for updates.
         """
-        # TODO (Jian) Considering merge step_fp and step_lp into a single step function
         defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay)
         super(BitCenterOptim, self).__init__(params, **defaults)
         if len(self.param_groups) != 1:
@@ -47,7 +46,6 @@ class BitCenterOptim(SGD):
         self.n_train_sample = n_train_sample
         self.n_minibatch_per_epoch = int(
             np.floor((self.n_train_sample - 1) // float(minibatch_size)) + 1)
-        # self.n_minibatch_per_epoch = n_minibatch_per_epoch
         self.cast_func = cast_func
         self.step_iter = 0  # this is a iter for step_lp function
         self.cache_iter = 0  # this is a iter for updating the gradient cache
@@ -133,7 +131,6 @@ class BitCenterOptim(SGD):
                     buf.add_(grad_offset.cuda())
                 else:
                     buf.add_(grad_offset)
-                # print("bc grad ", p_name, torch.sum(buf.type(torch.FloatTensor)**2).item())
                 p.data.add_(-buf)
         self.step_iter = (self.step_iter + 1) % self.n_minibatch_per_epoch
 
@@ -155,7 +152,6 @@ class BitCenterOptim(SGD):
                         param_offset_group["params"],
                         param_offset_group["params_name"]):
                     if p_offset_name == p_name.split("_delta")[0]:
-                        # p_offset = p_offset + p.type(p_offset.dtype)
                         p_offset.data.add_(p.data.type(p_offset.dtype))
                         corr_found = True
                         # update the offset lp variable
@@ -186,12 +182,6 @@ class BitCenterOptim(SGD):
         named_delta_parameters = self.get_named_delta_parameters(only_requires_grad=False)
         for p_name, p in named_delta_parameters:
             p.data.zero_()
-        # for param_group in self.param_groups:
-        #     for p, p_name in zip(param_group["params"],
-        #                          param_group["params_name"]):
-        #         if p_name.endswith("_delta"):
-        #             p.data.zero_()
-
  
     # note we set the mode of model using the following
     # helpers. After each specific fp or lp phase,
@@ -200,23 +190,19 @@ class BitCenterOptim(SGD):
     def on_start_lp_steps(self, model):
         self.reset_delta_vars()
         model.set_mode(do_offset=False)
-        # self.set_model_mode(model, do_offset=False)
 
     def on_end_lp_steps(self, model):
         self.update_offset_vars()
         self.reset_delta_vars()
         model.set_mode(do_offset=True)
-        # self.set_model_mode(model, do_offset=True)
 
     def on_start_fp_steps(self, model):
         self.clear_cache()
         model.set_mode(do_offset=True)
-        # self.set_model_mode(model, do_offset=True)
 
     def on_end_fp_steps(self, model):
         # pass
         model.set_mode(do_offset=True)
-        # self.set_model_mode(model, do_offset=True)
 
     def step(self):
         raise Exception(

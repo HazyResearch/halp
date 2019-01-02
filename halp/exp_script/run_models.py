@@ -17,7 +17,7 @@ from halp.models.resnet import ResNet18
 from halp.models.lstm import LSTM
 from halp.utils.mnist_data_utils import get_mnist_data_loader
 from halp.utils.cifar_data_utils import get_cifar10_data_loader
-from halp.utils.postag_data_utils import get_treebank_data_loader
+from halp.utils.postag_data_utils import get_conll2000_data_loader
 from halp.utils import utils
 from halp.utils.utils import void_cast_func
 from halp.utils.utils import single_to_half_det, single_to_half_stoc
@@ -115,7 +115,7 @@ elif args.dataset == "cifar10":
     assert (args.only_even_class == False) or (args.only_odd_class == False)
 elif args.dataset == "treebank":
     train_loader, val_loader, input_shape, n_train_sample, max_seq_length, num_embeddings = \
-        get_treebank_data_loader(args=args)
+        get_conll2000_data_loader(args=args)
 else:
     raise Exception(args.dataset + " not supported.")
 

@@ -29,26 +29,8 @@ def get_bn_grads(grad_output, weight, input, sigma_sq, mu, eps, x_hat):
         / torch.sqrt(sigma_sq + eps)
     m = input.size(0) * input.size(2) * input.size(3)
     input_center = input - expand_param_as_input(mu, input)
-
-    # if d_x_hat.dtype == torch.float16:
-    #     log_eps = torch.tensor(
-    #         np.array(np.finfo(np.float16).tiny, dtype=np.float16),
-    #         device=d_x_hat.device,
-    #         dtype=torch.float16)
-    # elif d_x_hat.dtype == torch.float32:
-    #     log_eps = torch.tensor(
-    #         np.array(np.finfo(np.float32).tiny, dtype=np.float32),
-    #         device=d_x_hat.device,
-    #         dtype=torch.float32)
-    # else:
-    #     log_eps = torch.tensor(
-    #         np.array(np.finfo(np.float64).tiny, dtype=np.float64),
-    #         device=d_x_hat.device,
-    #         dtype=torch.float64)
-
     # we found in fp16 mode, adding non-zero eps can results in very inaccurate gradient
     log_eps = 0.0
-
     log_d_x_hat = torch.log(torch.abs(d_x_hat) + log_eps)
     sign_d_x_hat = torch.sign(d_x_hat)
     log_input_center = torch.log(torch.abs(input_center) + log_eps)
@@ -65,14 +47,6 @@ def get_bn_grads(grad_output, weight, input, sigma_sq, mu, eps, x_hat):
         torch.exp(log_d_x_hat + log_input_center + expand_param_as_input(
             torch.tensor([3.0], dtype=sigma_sq.dtype, device=sigma_sq.device) *
             log_inv_std, input_center)))
-
-    # d_sigma_sq = -torch.tensor(
-    #     [0.5], dtype=sigma_sq.dtype,
-    #     device=sigma_sq.device) * sum_tensor_as_param(
-    #         d_x_hat * input_center * expand_param_as_input(
-    #             inv_std**3, input_center))
-
-    # print("test ", torch.sum(d_sigma_sq123.type(torch.FloatTensor)**2).item(), torch.sum(d_sigma_sq.type(torch.FloatTensor)**2).item())
 
     d_mu = sum_tensor_as_param(
         -d_x_hat * expand_param_as_input(inv_std, d_x_hat)) + torch.tensor(
@@ -163,7 +137,6 @@ class BitCenterBatchNormFunction(Function):
         return y_full - y_lp
 
     def backward(ctx, grad_output):
-        # TODO: clean unused tensors
         input_delta, input_lp, x_hat_lp, x_hat_full, \
         mu_delta, mu_lp, sigma_sq_delta, sigma_sq_lp, \
         output_grad_lp, weight_lp, weight_delta, eps, \
@@ -253,9 +226,6 @@ class BitCenterBatchNorm2D(BitCenterLayer, BatchNorm2d):
         # self.running_var_delta.zero_()
         self.running_var_lp = \
             Parameter(self.cast_func(self.running_var.data), requires_grad=False)
-
-        # print("double test ", torch.sum(self.running_var_lp**2),
-        #     torch.sum(self.running_var**2), torch.sum(self.running_var_delta**2))
 
     def reset_stat_bit_center(self):
         # lp value should inheritate the original lp value

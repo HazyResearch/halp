@@ -27,9 +27,9 @@ class LeNetTest(TestCase):
             w.data += move
         loss2 = regressor.forward(X, Y)
         assert np.abs((loss2.item() - loss1.item() ) - loss_diff) < 1e-9
-        # print("loss finite diff ", loss2[0] - loss1[0], " projected loss change ", loss_diff)
         print("logistic regression gradient test done!")
 
 
-# if __name__ == "__main__":
-#     logistic_regression_grad_test()  
+if __name__ == "__main__":
+    print(torch.__version__)
+    unittest.main()
