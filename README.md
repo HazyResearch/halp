@@ -88,7 +88,9 @@ export PYTHONPATH="$PYTHONPATH:path to current directory/halp"
 
   * LSTM CONLL2000 experiment:
   ```
-  (Pre-process CONLL2000 tagging data) python ./utils/postag_data_utils.py
+  (Pre-process CONLL2000 tagging data) 
+  mkdir datasets
+  python ./utils/postag_data_utils.py
   
   (IEEE float16 HALP) cd ./exp_script && python run_models.py --n-epochs=100 --batch-size=16 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=3  --n-classes=12  --solver=bc-svrg  --rounding=near  -T=279  --dataset=conll2000  --model=lstm  --cuda  --on-site-compute
 
