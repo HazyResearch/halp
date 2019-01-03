@@ -1,13 +1,12 @@
 # High Accuracy Low Precision Training (HALP_PyTorch)
 
-** HALP_PyTorch is a PyTorch-based simulator for the HALP (High Accuracy Low Precision) training algorithm.** HALP is a low-precision stochastic gradient descent variant that uses entirely low- precision computation in its inner loop while infrequently recentering this computation with higher-precision computation done in an outer loop. HALP anchors on two key components: (1) a known variance reduction method based on stochastic variance-reduced gradient (SVRG); (2) a novel bit centering technique that uses infrequent high-precision computation to reduce quantization noise. HALP_PyTorch is built on the IEEE float16 tensor and arithmetic provided by PyTorch. This implementation can be used to replicate our experiment results on multiple model, including logistic regression, LeNet, LSTM and ResNet.
+**HALP_PyTorch is a PyTorch-based simulator for the HALP (High Accuracy Low Precision) training algorithm.** HALP is a low-precision stochastic gradient descent variant that uses entirely low- precision computation in its inner loop while infrequently recentering this computation with higher-precision computation done in an outer loop. HALP anchors on two key components: (1) a known variance reduction method based on stochastic variance-reduced gradient (SVRG); (2) a novel bit centering technique that uses infrequent high-precision computation to reduce quantization noise. HALP_PyTorch is built on the IEEE float16 tensor and arithmetic provided by PyTorch. This implementation can be used to replicate our experiment results on multiple model, including logistic regression, LeNet, LSTM and ResNet.
 
 
 ## Content
 * [Setup instructions](#setup-instructions)
 * [Command guidelines](#command-guidelines)
-* [Citation](#citation)
-* [Acknowledgements](#acknowledgement)
+* [Acknowledgements](#acknowledgements)
 
 ## Setup instructions
 * create conda python 3.6 environment
@@ -49,7 +48,9 @@
     --solver=lp-svrg --rounding=near -T=<# of steps between each full gradient compute>
   * IEEE float16 HALP:
     --solver=bc-svrg --rounding=near -T=<# of steps between each full gradient compute>.
-    HALP can optionally use --on-site-compute. This mode avoid caching bit-centering offset activation / gradient tensors for the whole dataset. Instead on-site-compute mode only compute the offset when they are needed. This saves host memory in our simulator for large models.
+    HALP can optionally use --on-site-compute. This mode avoid caching bit-centering offset 
+    activation / gradient tensors for the whole dataset. Instead on-site-compute mode only 
+    compute the offset when they are needed. This saves host memory in our simulator for large models.
 
   * Misc specification
   * --cuda: this must be specified as IEEE float16 arithmetic is only supported by gpu in PyTorch
@@ -81,6 +82,8 @@
 
   * LSTM CONLL2000 experiment:
   ```
+  (Pre-process CONLL2000 tagging data) python ./utils/postag_data_utils.py
+  
   (IEEE float16 HALP) cd ./exp_script && python run_models.py --n-epochs=100 --batch-size=16 --reg=0.0 --alpha=0.5 --momentum=0.0 --seed=3  --n-classes=12  --solver=bc-svrg  --rounding=near  -T=279  --dataset=conll2000  --model=lstm  --cuda  --on-site-compute
 
   (IEEE float16 SGD) cd ./exp_script && python run_models.py --n-epochs=100 --batch-size=16 --reg=0.0 --alpha=5.0 --momentum=0.0 --seed=1  --n-classes=12  --solver=lp-sgd  --rounding=near --dataset=conll2000  --model=lstm  --cuda  --on-site-compute
@@ -94,4 +97,5 @@
   ```
 
 ## Acknowledgements
+
 We thank Nimit Sohoni, Paroma Varma, Albert Gu, Tri Dao, Charles Kuang for the help discussion. 
