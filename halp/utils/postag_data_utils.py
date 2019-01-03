@@ -11,7 +11,7 @@ import logging
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger('')
 
-DOWNLOAD_PATH = "./datasets/nltk/"
+DOWNLOAD_PATH = "../datasets/nltk/"
 nltk.data.path.append(DOWNLOAD_PATH)
 
 

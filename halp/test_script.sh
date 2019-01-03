@@ -86,34 +86,34 @@ echo "svrg done"
 
 cd /dfs/scratch0/zjian/floating_halp/halp/halp/
 printf "\n\n\n lstm double precision test, the svrg based optimizer should produce very similar numbers\n"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "bc svrg done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-svrg  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-svrg  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "lp svrg done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "svrg done"
 
 printf "\n\n\n lstm double precision test, the sgd based optimizer should produce very similar numbers\n"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-sgd  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-sgd  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "bc svrg done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-sgd  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-sgd  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "lp svrg done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=sgd  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=sgd  --rounding=void  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --double-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "svrg done"
 
 
 printf "\n\n\n lstm single precision test, the svrg based optimizer should produce roughly similar numbers\n"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-svrg  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "bc svrg done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-svrg  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-svrg  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "lp svrg done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=svrg  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "svrg done"
 
 printf "\n\n\n lstm single precision test, the sgd based optimizer should produce roughly similar numbers\n"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-sgd  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=bc-sgd  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "bc sgd done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-sgd  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=lp-sgd  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "lp sgd done"
-(python ./exp_script/run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=sgd  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
+(cd ./exp_script && python run_models.py --n-epochs=2 --batch-size=64 --reg=0.0 --alpha=0.1 --momentum=0.9 --seed=1 --n-classes=12  --solver=sgd  --rounding=near  -T=49  --dataset=conll2000  --model=lstm  --cuda --on-site-compute --float-debug | grep "Test\|epoch: 1 iter: 0\|epoch: 0 iter: 1 ")
 echo "sgd done"
