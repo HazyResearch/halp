@@ -1,6 +1,6 @@
-# High Accuracy Low Precision Training (HALP_PyTorch)
+# High Accuracy Low Precision Training (HALP)
 
-**HALP_PyTorch is a PyTorch-based simulator for the HALP (High Accuracy Low Precision) training algorithm.** HALP is a low-precision stochastic gradient descent variant that uses entirely low-precision computation in its inner loop while infrequently recentering this computation with higher-precision computation done in an outer loop. HALP anchors on two key components: (1) a known variance reduction method based on stochastic variance-reduced gradient (SVRG); (2) a novel bit centering technique that uses infrequent high-precision computation to reduce quantization noise. HALP_PyTorch is built on the IEEE float16 tensor and arithmetic provided by PyTorch. This implementation can be used to replicate our experiment results on multiple models, including logistic regression, LeNet, LSTM and ResNet.
+**HALP is a PyTorch-based simulator for the HALP (High Accuracy Low Precision) training algorithm.** HALP is a low-precision stochastic gradient descent variant that uses entirely low-precision computation in its inner loop while infrequently recentering this computation with higher-precision computation done in an outer loop. HALP anchors on two key components: (1) a known variance reduction method based on stochastic variance-reduced gradient (SVRG); (2) a novel bit centering technique that uses infrequent high-precision computation to reduce quantization noise. HALP_PyTorch is built on the IEEE float16 tensor and arithmetic provided by PyTorch. This implementation can be used to replicate our experiment results on multiple models, including logistic regression, LeNet, LSTM and ResNet.
 
 
 ## Content
