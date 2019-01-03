@@ -12,8 +12,12 @@
 ## Setup instructions
 * create conda python 3.6 environment
 * Install [PyTorch](https://pytorch.org/). Our implementation is tested under PyTorch 0.4.1.
-* Install nltk: ```conda install -c anaconda nltk ```
-* Clone the HALP repo.
+* (Optional) Install nltk to support data processing for the LSTM experiment: ```conda install -c anaconda nltk ```
+* Clone the HALP repo
+```
+
+```
+* Setup HALP repo
 ```
 
 ```
