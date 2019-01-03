@@ -240,7 +240,7 @@ else:
 optimizer.lr_scheduler = StepLRScheduler(
     optimizer, step_epoch=[150, 250], step_fac=0.1)
 # specify the epochs where to save check points
-save_step_epochs = np.array([300])
+save_step_epochs = np.array([1, 300])
 optimizer.model_saver = ModelSaver(
     optimizer, model, step_epoch=save_step_epochs, save_path=args.resnet_save_ckpt_path)
 if args.resnet_save_ckpt:
