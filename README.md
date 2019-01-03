@@ -10,9 +10,10 @@
 
 ## Setup instructions
 * Create conda python 3.6 environment ```conda create -n <name of the environment> python=3.6```
-* Install [PyTorch](https://pytorch.org/). Our implementation is tested under PyTorch 0.4.1 using cuda 9.0.
+* Install [PyTorch](https://pytorch.org/). Our implementation is tested under PyTorch 0.4.1 using cuda 9.0 and torchvision 0.2.1.
 ```
 pip install https://download.pytorch.org/whl/cu90/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
+pip install torchvision
 ```
 * (Optional) Install nltk to support data processing for the LSTM experiment: ```conda install -c anaconda nltk ```
 * Clone the HALP repo
