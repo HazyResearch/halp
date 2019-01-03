@@ -15,7 +15,7 @@
 pip install https://download.pytorch.org/whl/cu90/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
 pip install torchvision
 ```
-* (Optional) Install nltk to support data processing for the LSTM experiment: ```conda install -c anaconda nltk ```
+* Install nltk 3.3 to support data processing for the LSTM experiment: ```conda install -c anaconda nltk ```
 * Clone the HALP repo
 ```
 git clone https://github.com/HazyResearch/halp.git
