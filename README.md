@@ -1,6 +1,6 @@
-# High Accuracy Low Precision Training (HALP_PyTorch)
+# High Accuracy Low Precision Training (HALP)
 
-**HALP_PyTorch is a PyTorch-based simulator for the HALP (High Accuracy Low Precision) training algorithm.** HALP is a low-precision stochastic gradient descent variant that uses entirely low-precision computation in its inner loop while infrequently recentering this computation with higher-precision computation done in an outer loop. HALP anchors on two key components: (1) a known variance reduction method based on stochastic variance-reduced gradient (SVRG); (2) a novel bit centering technique that uses infrequent high-precision computation to reduce quantization noise. HALP_PyTorch is built on the IEEE float16 tensor and arithmetic provided by PyTorch. This implementation can be used to replicate our experiment results on multiple models, including logistic regression, LeNet, LSTM and ResNet.
+**HALP is a PyTorch-based simulator for the HALP (High Accuracy Low Precision) training algorithm.** HALP is a low-precision stochastic gradient descent variant that uses entirely low-precision computation in its inner loop while infrequently recentering this computation with higher-precision computation done in an outer loop. HALP anchors on two key components: (1) a known variance reduction method based on stochastic variance-reduced gradient (SVRG); (2) a novel bit centering technique that uses infrequent high-precision computation to reduce quantization noise. HALP_PyTorch is built on the IEEE float16 tensor and arithmetic provided by PyTorch. This implementation can be used to replicate our experiment results on multiple models, including logistic regression, LeNet, LSTM and ResNet.
 
 
 ## Content
@@ -9,16 +9,21 @@
 * [Acknowledgements](#acknowledgements)
 
 ## Setup instructions
-* Create conda python 3.6 environment
-* Install [PyTorch](https://pytorch.org/). Our implementation is tested under PyTorch 0.4.1.
-* (Optional) Install nltk to support data processing for the LSTM experiment: ```conda install -c anaconda nltk ```
+* Create conda python 3.6 environment ```conda create -n <name of the environment> python=3.6```
+* Install [PyTorch](https://pytorch.org/). Our implementation is tested under PyTorch 0.4.1 using cuda 9.0 and torchvision 0.2.1.
+```
+pip install https://download.pytorch.org/whl/cu90/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
+pip install torchvision
+```
+* Install nltk 3.3 to support data processing for the LSTM experiment: ```conda install -c anaconda nltk ```
 * Clone the HALP repo
 ```
-
+git clone https://github.com/HazyResearch/halp.git
 ```
 * Setup HALP module for python
 ```
-
+pip install -e halp
+export PYTHONPATH="$PYTHONPATH:path to current directory/halp"
 ```
 
 ## Command guidelines
