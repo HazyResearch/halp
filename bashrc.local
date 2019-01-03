@@ -1,5 +1,0 @@
-export PATH=/lfs/1/zjian/anaconda2/bin:${PATH}
-export PYTHONPATH="$PYTHONPATH:/dfs/scratch0/zjian/halp_float/halp"
-source activate floating_halp 
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/cuda/lib64
-export CUDA_VISIBLE_DEVICES=0
