@@ -17,7 +17,6 @@ nltk.data.path.append(DOWNLOAD_PATH)
 
 def download_postag_dataset(download_path):
     nltk.download('conll2000', download_dir=DOWNLOAD_PATH)
-    nltk.download('treebank', download_dir=DOWNLOAD_PATH)
     nltk.download('universal_tagset', download_dir=DOWNLOAD_PATH)
 
 def get_dict(sentences):
