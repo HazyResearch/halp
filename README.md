@@ -106,4 +106,4 @@ export PYTHONPATH="$PYTHONPATH:path to current directory/halp"
 
 ## Acknowledgements
 
-We thank Nimit Sohoni, Paroma Varma, Albert Gu, Tri Dao, Charles Kuang for the help discussion. 
+We thank Nimit Sohoni, Paroma Varma, Albert Gu, Tri Dao, Charles Kuang for the helpful discussion. 
